@@ -3,8 +3,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   CheckCircle2,
+  ChevronDown,
+  MessageSquare,
   Mic,
   MicOff,
+  Minimize2,
+  Phone,
+  PhoneOff,
   Send,
   UserPlus,
   Volume2,
@@ -12,7 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { BrandMark } from '@/components/ui/brand-loader';
-import { CadenceBotFaceIcon } from '@/components/embed/cadence-bot-icon';
+import { CadenceVoiceOrb } from '@/components/embed/cadence-orb';
 import { pickBrowserVoice } from '@/lib/voice-speech';
 import { WidgetTheme } from '@/lib/types';
 
@@ -72,6 +77,17 @@ export function VoiceWidgetPopup({
     knowledgeItems: { sourceName: string; sourceType: string; content: string }[];
   };
 }) {
+  const [hasAgreed, setHasAgreed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.localStorage.getItem('cadence_voice_terms_agreed') === 'true';
+    }
+    return false;
+  });
+
+  const [callActive, setCallActive] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [leadDrawerOpen, setLeadDrawerOpen] = useState(false);
+
   const [sessionId] = useState(
     () => `wsess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   );
@@ -85,14 +101,14 @@ export function VoiceWidgetPopup({
     },
   ]);
   const [inputValue, setInputValue] = useState('');
-  const [voiceState, setVoiceState] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>(
+  const [voiceState, setVoiceState] = useState<'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking'>(
     'idle'
   );
   const [speakerMuted, setSpeakerMuted] = useState(false);
+  const [micMuted, setMicMuted] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // Lead form state
-  const [leadDrawerOpen, setLeadDrawerOpen] = useState(false);
+  // Lead capture form state
   const [leadName, setLeadName] = useState('');
   const [leadEmail, setLeadEmail] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
@@ -103,14 +119,16 @@ export function VoiceWidgetPopup({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecLike | null>(null);
   const speakerMutedRef = useRef(speakerMuted);
+  const micMutedRef = useRef(micMuted);
+  const turnCounterRef = useRef(0);
+
   useEffect(() => {
     speakerMutedRef.current = speakerMuted;
   }, [speakerMuted]);
 
-  const isDark = widget.widgetTheme === 'dark';
-  const safeAccent = /^#[0-9a-fA-F]{3,8}$/.test(widget.accentColor || '')
-    ? widget.accentColor
-    : '#2563eb';
+  useEffect(() => {
+    micMutedRef.current = micMuted;
+  }, [micMuted]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -120,9 +138,7 @@ export function VoiceWidgetPopup({
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
-        } catch {
-          // Ignore
-        }
+        } catch {}
       }
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -134,7 +150,38 @@ export function VoiceWidgetPopup({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, voiceState, leadDrawerOpen]);
+  }, [messages, voiceState, showTranscript, leadDrawerOpen]);
+
+  const handleCloseClick = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setCallActive(false);
+    setVoiceState('idle');
+
+    if (onClose) {
+      onClose();
+    } else if (typeof window !== 'undefined' && window.parent !== window) {
+      window.parent.postMessage(
+        { type: 'cadence-widget-close', agentId: widget.id },
+        '*'
+      );
+    }
+  };
+
+  const handleAgreeTerms = () => {
+    setHasAgreed(true);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem('cadence_voice_terms_agreed', 'true');
+      } catch {}
+    }
+  };
 
   const speakResponse = (text: string) => {
     if (
@@ -142,7 +189,7 @@ export function VoiceWidgetPopup({
       typeof window === 'undefined' ||
       !('speechSynthesis' in window)
     ) {
-      setVoiceState('idle');
+      setVoiceState(callActive ? 'listening' : 'idle');
       return;
     }
     try {
@@ -156,12 +203,125 @@ export function VoiceWidgetPopup({
       utterance.pitch = match.pitch;
       utterance.rate = match.rate;
       utterance.onstart = () => setVoiceState('speaking');
-      utterance.onend = () => setVoiceState('idle');
-      utterance.onerror = () => setVoiceState('idle');
+      utterance.onend = () => {
+        if (callActive && !micMutedRef.current) {
+          startListening();
+        } else {
+          setVoiceState('idle');
+        }
+      };
+      utterance.onerror = () => {
+        if (callActive && !micMutedRef.current) {
+          startListening();
+        } else {
+          setVoiceState('idle');
+        }
+      };
       window.speechSynthesis.speak(utterance);
+    } catch {
+      setVoiceState(callActive ? 'listening' : 'idle');
+    }
+  };
+
+  const startListening = () => {
+    if (typeof window === 'undefined') return;
+    const win = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecLike;
+      webkitSpeechRecognition?: new () => SpeechRecLike;
+    };
+    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      setVoiceState('idle');
+      return;
+    }
+
+    try {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+
+      const recognition = new SpeechRec();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = widget.language?.toLowerCase().includes('spanish')
+        ? 'es-ES'
+        : widget.language?.toLowerCase().includes('uk')
+          ? 'en-GB'
+          : 'en-US';
+
+      recognition.onresult = (event) => {
+        const idx = event.results.length - 1;
+        const spoken = event.results[idx]?.[0]?.transcript?.trim();
+        if (spoken) {
+          sendMessage(spoken);
+        } else if (callActive) {
+          setVoiceState('listening');
+        } else {
+          setVoiceState('idle');
+        }
+      };
+
+      recognition.onerror = () => {
+        if (callActive) {
+          setVoiceState('listening');
+        } else {
+          setVoiceState('idle');
+        }
+      };
+
+      recognition.onend = () => {
+        if (callActive && voiceState === 'listening' && !micMutedRef.current) {
+          try {
+            recognition.start();
+          } catch {}
+        }
+      };
+
+      recognitionRef.current = recognition;
+      setVoiceState('listening');
+      recognition.start();
     } catch {
       setVoiceState('idle');
     }
+  };
+
+  const startCall = async () => {
+    setCallActive(true);
+    setVoiceState('connecting');
+    setNotice(null);
+
+    try {
+      if (navigator.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((t) => t.stop());
+      }
+    } catch {
+      setNotice('Microphone access was denied. You can still message the assistant below.');
+    }
+
+    // Play welcome greeting speech
+    const welcome =
+      widget.welcomeMessage?.trim() ||
+      `Hi! How can I help you with ${widget.businessName} today?`;
+    
+    setTimeout(() => {
+      speakResponse(welcome);
+    }, 700);
+  };
+
+  const endCall = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setCallActive(false);
+    setVoiceState('idle');
   };
 
   const sendMessage = async (rawText: string) => {
@@ -169,8 +329,9 @@ export function VoiceWidgetPopup({
     if (!cleanText || voiceState === 'thinking') return;
 
     setNotice(null);
+    turnCounterRef.current += 1;
     const userTurn: ChatTurn = {
-      id: `u_${Date.now()}`,
+      id: `u_${turnCounterRef.current}`,
       speaker: 'user',
       content: cleanText,
     };
@@ -217,17 +378,19 @@ export function VoiceWidgetPopup({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Unable to reach assistant.');
+        throw new Error(data.error || 'Unable to reach conversational agent.');
       }
 
       const replyText =
         data.responseText ||
-        `Thanks for contacting ${widget.businessName}. How can I help further?`;
+        `Thanks for contacting ${widget.businessName}. How can I assist you further?`;
 
+      turnCounterRef.current += 1;
+      const agentTurnId = `a_${turnCounterRef.current}`;
       setMessages((prev) => [
         ...prev,
         {
-          id: `a_${Date.now()}`,
+          id: agentTurnId,
           speaker: 'agent',
           content: replyText,
           sources: Array.isArray(data.sourcesUsed) ? data.sourcesUsed : undefined,
@@ -236,86 +399,8 @@ export function VoiceWidgetPopup({
 
       speakResponse(replyText);
     } catch (err) {
-      setVoiceState('idle');
+      setVoiceState(callActive ? 'listening' : 'idle');
       setNotice(err instanceof Error ? err.message : 'Unable to send message.');
-    }
-  };
-
-  const toggleMicrophone = async () => {
-    if (voiceState === 'listening') {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {
-          // Ignore
-        }
-      }
-      setVoiceState('idle');
-      return;
-    }
-
-    if (typeof window === 'undefined') return;
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-
-    const win = window as unknown as {
-      SpeechRecognition?: new () => SpeechRecLike;
-      webkitSpeechRecognition?: new () => SpeechRecLike;
-    };
-    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
-
-    if (!SpeechRec) {
-      setNotice('Voice microphone capture is unsupported in this browser — type your message below.');
-      return;
-    }
-
-    try {
-      if (navigator.mediaDevices?.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((t) => t.stop());
-      }
-    } catch {
-      setNotice('Microphone permission was denied. You can still type your question below.');
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRec();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = widget.language?.toLowerCase().includes('spanish')
-        ? 'es-ES'
-        : widget.language?.toLowerCase().includes('uk')
-          ? 'en-GB'
-          : 'en-US';
-
-      recognition.onresult = (event) => {
-        const idx = event.results.length - 1;
-        const spoken = event.results[idx]?.[0]?.transcript?.trim();
-        if (spoken) {
-          sendMessage(spoken);
-        } else {
-          setVoiceState('idle');
-        }
-      };
-
-      recognition.onerror = () => {
-        setVoiceState('idle');
-        setNotice('Could not hear speech clearly. Try again or type below.');
-      };
-
-      recognition.onend = () => {
-        setVoiceState((curr) => (curr === 'listening' ? 'idle' : curr));
-      };
-
-      recognitionRef.current = recognition;
-      setNotice(null);
-      setVoiceState('listening');
-      recognition.start();
-    } catch {
-      setVoiceState('idle');
-      setNotice('Microphone could not start. Please type your message below.');
     }
   };
 
@@ -352,17 +437,17 @@ export function VoiceWidgetPopup({
       if (!res.ok) throw new Error(data.error || 'Could not submit details.');
       setLeadSubmitted(true);
       setLeadDrawerOpen(false);
+      turnCounterRef.current += 1;
+      const leadMsgId = `lead_ok_${turnCounterRef.current}`;
       setMessages((prev) => [
         ...prev,
         {
-          id: `lead_ok_${Date.now()}`,
+          id: leadMsgId,
           speaker: 'agent',
-          content: `Thank you, ${leadName.trim()}! Our team at ${widget.businessName} has received your contact information and will follow up shortly.`,
+          content: `Thank you, ${leadName.trim()}! Our team at ${widget.businessName} has received your details and will follow up shortly.`,
         },
       ]);
-      speakResponse(
-        `Thank you, ${leadName.trim()}! Our team will follow up with you shortly.`
-      );
+      speakResponse(`Thank you, ${leadName.trim()}! Our team will follow up with you shortly.`);
     } catch (err) {
       setNotice(err instanceof Error ? err.message : 'Unable to send contact details.');
     } finally {
@@ -370,43 +455,113 @@ export function VoiceWidgetPopup({
     }
   };
 
-  const handleCloseClick = () => {
-    if (onClose) {
-      onClose();
-    } else if (typeof window !== 'undefined' && window.parent !== window) {
-      window.parent.postMessage(
-        { type: 'cadence-widget-close', agentId: widget.id },
-        '*'
-      );
-    }
-  };
+  // -------------------------------------------------------------
+  // SCREEN 1: AGREEMENT MODAL (Matches user screenshot 1)
+  // -------------------------------------------------------------
+  if (!hasAgreed) {
+    return (
+      <div className="flex h-full w-full flex-col justify-between bg-white p-7 text-neutral-900 select-none">
+        <div>
+          <h2 className="text-[17px] font-semibold leading-snug text-neutral-900">
+            By clicking &apos;I agree&apos; and using this service, you are confirming:
+          </h2>
 
-  return (
-    <div
-      className={`flex h-full w-full flex-col overflow-hidden ${
-        isDark ? 'bg-neutral-950 text-neutral-100' : 'bg-white text-neutral-900'
-      }`}
-    >
-      {/* Header */}
-      <div
-        style={{ backgroundColor: safeAccent }}
-        className="flex shrink-0 items-center justify-between px-4 py-3 text-white"
-      >
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
-            <CadenceBotFaceIcon className="h-6 w-6 text-white" eyeStroke={safeAccent} />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold leading-tight">
-              {widget.name}
-            </p>
-            <p className="truncate text-[11px] text-white/85">
-              {widget.businessName} · {widget.voiceLabel}
-            </p>
-          </div>
+          <ul className="mt-6 space-y-4 text-[13.5px] leading-relaxed text-neutral-600">
+            <li className="flex items-start gap-2.5">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+              <span>You are over the age of 18</span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+              <span>You acknowledge you are engaging with an AI service</span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+              <span>You consent to being recorded to provide the conversational service</span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+              <span>
+                You acknowledge our Privacy Policy, available at{' '}
+                <span className="underline cursor-pointer text-neutral-900">
+                  cadence.app/privacy-policy
+                </span>
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+              <span>
+                You consent to the sharing of your data with third-parties as may be necessary to provide this service to you
+              </span>
+            </li>
+          </ul>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="mt-8 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleCloseClick}
+            className="flex-1 rounded-full border border-neutral-300 bg-white py-3 text-sm font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 active:scale-[0.98]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleAgreeTerms}
+            className="flex-1 rounded-full bg-black py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:scale-[0.98]"
+          >
+            I agree
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // SCREEN 2: ACTIVE VOICE / ORB VIEW (Matches user screenshots 2, 3, 4)
+  // -------------------------------------------------------------
+  return (
+    <div className="relative flex h-full w-full flex-col justify-between overflow-hidden bg-white text-neutral-900">
+      {/* Top Header Bar */}
+      <div className="flex shrink-0 items-center justify-between px-5 pt-4">
+        {callActive || showTranscript ? (
+          <button
+            type="button"
+            onClick={() => setShowTranscript((prev) => !prev)}
+            aria-label="Toggle transcript"
+            className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
+              showTranscript
+                ? 'bg-neutral-900 text-white'
+                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+            }`}
+          >
+            <MessageSquare className="h-4 w-4" />
+          </button>
+        ) : (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-xs">
+            <span role="img" aria-label="Language flag" className="text-sm">
+              🇺🇸
+            </span>
+            <span>English</span>
+            <ChevronDown className="h-3 w-3 text-neutral-400" />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          {widget.leadCaptureEnabled && !leadSubmitted && (
+            <button
+              type="button"
+              onClick={() => {
+                setLeadDrawerOpen((o) => !o);
+                setShowTranscript(true);
+              }}
+              className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-200"
+            >
+              <UserPlus className="mr-1 inline h-3 w-3" />
+              Contact
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => {
@@ -417,9 +572,9 @@ export function VoiceWidgetPopup({
                 if (voiceState === 'speaking') setVoiceState('idle');
               }
             }}
-            title={speakerMuted ? 'Unmute voice output' : 'Mute voice output'}
-            aria-label={speakerMuted ? 'Unmute speaker' : 'Mute speaker'}
-            className="rounded-lg p-1.5 text-white/90 transition-colors hover:bg-white/20"
+            title={speakerMuted ? 'Unmute voice' : 'Mute voice'}
+            aria-label="Toggle speaker mute"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition-colors hover:bg-neutral-200"
           >
             {speakerMuted ? (
               <VolumeX className="h-4 w-4" />
@@ -431,285 +586,223 @@ export function VoiceWidgetPopup({
           <button
             type="button"
             onClick={handleCloseClick}
-            title="Minimize chat"
-            aria-label="Minimize chat"
-            className="rounded-lg p-1.5 text-white/90 transition-colors hover:bg-white/20"
+            aria-label="Minimize widget"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition-colors hover:bg-neutral-200"
           >
-            <X className="h-4 w-4" />
+            <Minimize2 className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Acoustic Status Bar */}
-      <div
-        className={`flex shrink-0 items-center justify-between border-b px-4 py-2 text-[11px] ${
-          isDark
-            ? 'border-neutral-800 bg-neutral-900/70 text-neutral-400'
-            : 'border-neutral-100 bg-neutral-50 text-neutral-500'
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <div className="flex h-3.5 items-center gap-0.5">
-            {[10, 16, 12, 18, 9].map((h, i) => (
-              <span
-                key={i}
-                style={{
-                  backgroundColor: safeAccent,
-                  height:
-                    voiceState === 'listening' || voiceState === 'speaking'
-                      ? `${h}px`
-                      : '5px',
-                }}
-                className={`w-0.5 rounded-full transition-all duration-200 ${
-                  voiceState === 'listening' || voiceState === 'speaking'
-                    ? 'animate-pulse opacity-100'
-                    : 'opacity-40'
-                }`}
-              />
-            ))}
-          </div>
-          <span className="font-medium">
-            {voiceState === 'listening'
-              ? 'Listening to your voice...'
-              : voiceState === 'thinking'
-                ? 'Searching knowledge & replying...'
-                : voiceState === 'speaking'
-                  ? 'Speaking response...'
-                  : 'Ready — tap mic or type'}
-          </span>
-        </div>
-
-        {widget.leadCaptureEnabled && !leadSubmitted && (
-          <button
-            type="button"
-            onClick={() => setLeadDrawerOpen((o) => !o)}
-            style={{ color: safeAccent }}
-            className="inline-flex items-center gap-1 font-semibold hover:underline"
+      {/* Main Center Area: Animated Orb or Transcript Drawer */}
+      <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-4">
+        {showTranscript ? (
+          /* Transcript / Chat turns view */
+          <div
+            ref={scrollRef}
+            className="h-full w-full space-y-3 overflow-y-auto px-1 py-2 text-xs"
           >
-            <UserPlus className="h-3 w-3" />
-            {leadDrawerOpen ? 'Back to chat' : 'Leave contact'}
-          </button>
-        )}
-      </div>
-
-      {/* Scrollable Conversation / Lead Form */}
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3.5">
-        {leadDrawerOpen ? (
-          <form
-            onSubmit={handleSubmitLead}
-            className={`space-y-3 rounded-xl border p-3.5 ${
-              isDark
-                ? 'border-neutral-800 bg-neutral-900'
-                : 'border-neutral-200 bg-neutral-50/70'
-            }`}
-          >
-            <div>
-              <p className="text-xs font-semibold">Request a follow-up</p>
-              <p
-                className={`mt-0.5 text-[11px] ${
-                  isDark ? 'text-neutral-400' : 'text-neutral-500'
-                }`}
+            {leadDrawerOpen ? (
+              <form
+                onSubmit={handleSubmitLead}
+                className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50/70 p-4"
               >
-                Leave your details for {widget.businessName}.
-              </p>
-            </div>
-            <input
-              type="text"
-              required
-              value={leadName}
-              onChange={(e) => setLeadName(e.target.value)}
-              placeholder="Your name *"
-              className={`w-full rounded-lg border px-3 py-2 text-xs focus:outline-none ${
-                isDark
-                  ? 'border-neutral-700 bg-neutral-950 text-white placeholder:text-neutral-500'
-                  : 'border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400'
-              }`}
-            />
-            <input
-              type="email"
-              required
-              value={leadEmail}
-              onChange={(e) => setLeadEmail(e.target.value)}
-              placeholder="Email address *"
-              className={`w-full rounded-lg border px-3 py-2 text-xs focus:outline-none ${
-                isDark
-                  ? 'border-neutral-700 bg-neutral-950 text-white placeholder:text-neutral-500'
-                  : 'border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400'
-              }`}
-            />
-            <input
-              type="tel"
-              value={leadPhone}
-              onChange={(e) => setLeadPhone(e.target.value)}
-              placeholder="Phone (optional)"
-              className={`w-full rounded-lg border px-3 py-2 text-xs focus:outline-none ${
-                isDark
-                  ? 'border-neutral-700 bg-neutral-950 text-white placeholder:text-neutral-500'
-                  : 'border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400'
-              }`}
-            />
-            <textarea
-              rows={2}
-              value={leadNotes}
-              onChange={(e) => setLeadNotes(e.target.value)}
-              placeholder="How can we help?"
-              className={`w-full rounded-lg border px-3 py-2 text-xs focus:outline-none ${
-                isDark
-                  ? 'border-neutral-700 bg-neutral-950 text-white placeholder:text-neutral-500'
-                  : 'border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400'
-              }`}
-            />
-            <button
-              type="submit"
-              disabled={leadSubmitting}
-              style={{ backgroundColor: safeAccent }}
-              className="w-full rounded-lg py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-              {leadSubmitting ? 'Sending...' : 'Send Details'}
-            </button>
-          </form>
-        ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex flex-col ${
-                msg.speaker === 'user' ? 'items-end' : 'items-start'
-              }`}
-            >
-              <div
-                style={
-                  msg.speaker === 'user'
-                    ? { backgroundColor: safeAccent }
-                    : undefined
-                }
-                className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
-                  msg.speaker === 'user'
-                    ? 'rounded-tr-xs text-white'
-                    : isDark
-                      ? 'rounded-tl-xs bg-neutral-900 text-neutral-100'
-                      : 'rounded-tl-xs bg-neutral-100 text-neutral-800'
-                }`}
-              >
-                {msg.content}
-              </div>
-              {msg.sources && msg.sources.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {msg.sources.map((src) => (
-                    <span
-                      key={src}
-                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${
-                        isDark
-                          ? 'bg-neutral-900 text-neutral-400'
-                          : 'bg-neutral-100 text-neutral-500'
-                      }`}
-                    >
-                      <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
-                      {src}
-                    </span>
-                  ))}
+                <div>
+                  <p className="text-xs font-semibold text-neutral-900">Request follow-up</p>
+                  <p className="mt-0.5 text-[11px] text-neutral-500">
+                    Leave your contact details for {widget.businessName}.
+                  </p>
                 </div>
-              )}
-            </div>
-          ))
-        )}
+                <input
+                  type="text"
+                  required
+                  value={leadName}
+                  onChange={(e) => setLeadName(e.target.value)}
+                  placeholder="Your name *"
+                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs focus:outline-none"
+                />
+                <input
+                  type="email"
+                  required
+                  value={leadEmail}
+                  onChange={(e) => setLeadEmail(e.target.value)}
+                  placeholder="Email address *"
+                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs focus:outline-none"
+                />
+                <input
+                  type="tel"
+                  value={leadPhone}
+                  onChange={(e) => setLeadPhone(e.target.value)}
+                  placeholder="Phone number (optional)"
+                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs focus:outline-none"
+                />
+                <textarea
+                  rows={2}
+                  value={leadNotes}
+                  onChange={(e) => setLeadNotes(e.target.value)}
+                  placeholder="How can we help?"
+                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs focus:outline-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLeadDrawerOpen(false)}
+                    className="flex-1 rounded-lg border border-neutral-200 bg-white py-2 text-xs font-medium text-neutral-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={leadSubmitting}
+                    className="flex-1 rounded-lg bg-black py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                  >
+                    {leadSubmitting ? 'Sending...' : 'Submit'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`flex flex-col ${
+                    m.speaker === 'user' ? 'items-end' : 'items-start'
+                  }`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 leading-relaxed ${
+                      m.speaker === 'user'
+                        ? 'bg-neutral-900 text-white rounded-tr-xs'
+                        : 'bg-neutral-100 text-neutral-800 rounded-tl-xs'
+                    }`}
+                  >
+                    {m.content}
+                  </div>
+                  {m.sources && m.sources.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {m.sources.map((s) => (
+                        <span
+                          key={s}
+                          className="inline-flex items-center gap-1 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500"
+                        >
+                          <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
 
-        {voiceState === 'thinking' && (
-          <div className="flex items-start">
-            <div
-              className={`rounded-2xl rounded-tl-xs px-3.5 py-2.5 text-xs ${
-                isDark
-                  ? 'bg-neutral-900 text-neutral-400'
-                  : 'bg-neutral-100 text-neutral-500'
-              }`}
-            >
-              Thinking...
+            {voiceState === 'thinking' && (
+              <div className="flex items-start">
+                <div className="rounded-2xl rounded-tl-xs bg-neutral-100 px-4 py-2 text-xs text-neutral-500 animate-pulse">
+                  Thinking...
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Orb Center View */
+          <div className="flex flex-col items-center justify-center text-center">
+            <CadenceVoiceOrb
+              state={voiceState}
+              onStartCall={startCall}
+              size={184}
+            />
+
+            {/* Subtitle / Status Text */}
+            <div className="mt-6 min-h-[44px]">
+              {voiceState === 'connecting' ? (
+                <p className="text-sm font-medium text-neutral-500 animate-pulse">
+                  Connecting...
+                </p>
+              ) : voiceState === 'speaking' ? (
+                <p className="text-sm font-medium text-neutral-500">
+                  Speaking...
+                </p>
+              ) : voiceState === 'listening' ? (
+                <p className="text-sm font-medium text-sky-600 animate-pulse">
+                  Listening to you...
+                </p>
+              ) : voiceState === 'thinking' ? (
+                <p className="text-sm font-medium text-neutral-500 animate-pulse">
+                  Thinking...
+                </p>
+              ) : (
+                <p className="max-w-[260px] text-sm leading-snug text-neutral-600">
+                  Discover the capabilities of Conversational Agents powered by Cadence
+                </p>
+              )}
             </div>
           </div>
         )}
 
         {notice && (
-          <p className="rounded-lg bg-rose-500/10 px-3 py-2 text-[11px] text-rose-500">
+          <div className="absolute bottom-1 inset-x-6 rounded-lg bg-rose-50 px-3 py-2 text-center text-xs text-rose-600">
             {notice}
-          </p>
+          </div>
         )}
       </div>
 
-      {/* Bottom Voice + Text Input Dock */}
-      <div
-        className={`shrink-0 border-t p-3 ${
-          isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-100 bg-white'
-        }`}
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            sendMessage(inputValue);
-          }}
-          className="flex items-center gap-2"
-        >
-          <button
-            type="button"
-            onClick={toggleMicrophone}
-            disabled={voiceState === 'thinking'}
-            aria-label={voiceState === 'listening' ? 'Stop voice input' : 'Start voice input'}
-            title={voiceState === 'listening' ? 'Stop listening' : 'Tap to speak'}
-            style={
-              voiceState === 'listening'
-                ? { backgroundColor: '#ef4444' }
-                : { backgroundColor: safeAccent }
-            }
-            className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white shadow-xs transition-transform active:scale-95 disabled:opacity-50`}
+      {/* Bottom Controls Bar */}
+      <div className="shrink-0 p-4 pt-1">
+        <div className="flex items-center gap-3">
+          {/* Rounded Pill Text Input */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              sendMessage(inputValue);
+            }}
+            className="flex flex-1 items-center rounded-full border border-neutral-200 bg-white px-4 py-2.5 shadow-xs transition-colors focus-within:border-neutral-400"
           >
-            {voiceState === 'listening' ? (
-              <MicOff className="h-4 w-4" />
-            ) : (
-              <Mic className="h-4 w-4" />
-            )}
-          </button>
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Or send a message..."
+              className="w-full bg-transparent text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={!inputValue.trim() || voiceState === 'thinking'}
+              aria-label="Send message"
+              className="ml-2 text-neutral-400 transition-colors hover:text-neutral-800 disabled:opacity-30"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
 
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask a question or tap mic..."
-            className={`min-w-0 flex-1 rounded-full border px-3.5 py-2 text-xs focus:outline-none ${
-              isDark
-                ? 'border-neutral-800 bg-neutral-900 text-white placeholder:text-neutral-500'
-                : 'border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400'
-            }`}
-          />
+          {/* Call Control Button (Mute/Hangup when active, or mic button) */}
+          {callActive ? (
+            <button
+              type="button"
+              onClick={endCall}
+              aria-label="End voice call"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+            >
+              <PhoneOff className="h-5 w-5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={startCall}
+              aria-label="Start voice call"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+            >
+              <Mic className="h-5 w-5" />
+            </button>
+          )}
+        </div>
 
-          <button
-            type="submit"
-            disabled={!inputValue.trim() || voiceState === 'thinking'}
-            aria-label="Send message"
-            style={{ backgroundColor: safeAccent }}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-          >
-            <Send className="h-3.5 w-3.5" />
-          </button>
-        </form>
-      </div>
-
-      {/* Mandatory Powered by Cadence Footer */}
-      <div
-        className={`flex shrink-0 items-center justify-center gap-1.5 border-t px-4 py-2 text-[11px] ${
-          isDark
-            ? 'border-neutral-800 bg-neutral-900/90 text-neutral-400'
-            : 'border-neutral-100 bg-neutral-50/90 text-neutral-500'
-        }`}
-      >
-        <span>Powered by</span>
-        <BrandMark
-          className={`h-3.5 w-4 ${isDark ? 'text-white' : 'text-[#14110f]'}`}
-        />
-        <span
-          className={`font-display font-semibold tracking-tight ${
-            isDark ? 'text-white' : 'text-[#14110f]'
-          }`}
-        >
-          Cadence
-        </span>
+        {/* Powered by Cadence footer */}
+        <div className="mt-2.5 flex items-center justify-center gap-1.5 text-[11px] text-neutral-400">
+          <span>Powered by</span>
+          <BrandMark className="h-3.5 w-4 text-neutral-700" />
+          <span className="font-display font-semibold tracking-tight text-neutral-800">
+            Cadence
+          </span>
+        </div>
       </div>
     </div>
   );

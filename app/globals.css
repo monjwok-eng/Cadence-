@@ -22,5 +22,25 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  @keyframes cadenceOrbBreathe {
+    0%, 100% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+    50% {
+      transform: scale(1.06);
+      filter: brightness(1.08);
+    }
+  }
+
+  @keyframes cadenceOrbListening {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.03);
+    }
+  }
 }
 

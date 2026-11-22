@@ -6,12 +6,12 @@ import {
   Code2,
   Copy,
   Globe,
+  Phone,
   Save,
   ShieldCheck,
   X,
 } from 'lucide-react';
 import { useApp } from '@/components/providers/app-provider';
-import { CadenceBotFaceIcon } from '@/components/embed/cadence-bot-icon';
 import { VoiceWidgetPopup } from '@/components/embed/voice-widget-popup';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -136,7 +136,12 @@ function EmbedEditor({ selectedAgent }: { selectedAgent: VoiceAgent }) {
   );
 
   const origin =
-    typeof window !== 'undefined' ? window.location.origin : 'https://cadence.app';
+    typeof window !== 'undefined' &&
+    window.location.hostname &&
+    !window.location.hostname.includes('run.app') &&
+    !window.location.hostname.includes('localhost')
+      ? window.location.origin
+      : 'https://cadence-teal-eight.vercel.app';
 
   const safeAccent = /^#[0-9a-fA-F]{3,8}$/.test(accentColor.trim())
     ? accentColor.trim()
@@ -618,16 +623,18 @@ function EmbedEditor({ selectedAgent }: { selectedAgent: VoiceAgent }) {
                     ? `Minimize ${selectedAgent.name}`
                     : `Open ${selectedAgent.name}`
                 }
-                style={{ backgroundColor: safeAccent }}
-                className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_12px_30px_rgba(0,0,0,0.25)] transition-transform duration-150 hover:scale-105 active:scale-95"
+                style={{
+                  background:
+                    'radial-gradient(circle at 35% 25%, #d9f99d 0%, #a7f3d0 20%, #38bdf8 45%, #0284c7 78%, #0369a1 100%)',
+                  boxShadow:
+                    'inset -3px -4px 8px rgba(2, 44, 95, 0.45), inset 3px 3px 6px rgba(255, 255, 255, 0.65), 0 12px 30px rgba(14, 165, 233, 0.42)',
+                }}
+                className="flex h-14 w-14 items-center justify-center rounded-full text-white transition-transform duration-150 hover:scale-105 active:scale-95"
               >
                 {previewOpen ? (
-                  <X className="h-6 w-6" />
+                  <X className="h-6 w-6 text-white" />
                 ) : (
-                  <CadenceBotFaceIcon
-                    className="h-8 w-8 text-white"
-                    eyeStroke={safeAccent}
-                  />
+                  <Phone className="h-6 w-6 text-white fill-white" />
                 )}
               </button>
             </div>
