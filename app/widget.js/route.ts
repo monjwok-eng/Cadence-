@@ -75,7 +75,7 @@ const WIDGET_SCRIPT = String.raw`(function () {
     var isDark = cfg.widgetTheme === 'dark';
     var launcherText = (cfg.launcherLabel || 'Voice chat').trim();
 
-    // Inject responsive CSS for centered launcher and fluid panel on mobile
+    // Inject responsive CSS for centered launcher and centered modal on mobile
     var styleId = 'cadence-widget-styles-' + agentId;
     if (!document.getElementById(styleId)) {
       var st = document.createElement('style');
@@ -86,14 +86,24 @@ const WIDGET_SCRIPT = String.raw`(function () {
         '    left: 50% !important;' +
         '    right: auto !important;' +
         '    transform: translateX(-50%) !important;' +
-        '    bottom: 20px !important;' +
+        '    bottom: 16px !important;' +
         '  }' +
         '  #cadence-widget-panel-' + agentId + ' {' +
-        '    left: 12px !important;' +
-        '    right: 12px !important;' +
-        '    width: calc(100vw - 24px) !important;' +
-        '    bottom: 78px !important;' +
-        '    max-height: calc(100vh - 96px) !important;' +
+        '    inset: 0 !important;' +
+        '    width: 100vw !important;' +
+        '    height: 100vh !important;' +
+        '    max-height: 100vh !important;' +
+        '    padding: 12px !important;' +
+        '    display: flex !important;' +
+        '    align-items: center !important;' +
+        '    justify-content: center !important;' +
+        '  }' +
+        '  #cadence-widget-panel-' + agentId + ' > div {' +
+        '    width: 100% !important;' +
+        '    max-width: 100% !important;' +
+        '    height: 100% !important;' +
+        '    max-height: calc(100vh - 24px) !important;' +
+        '    border-radius: 24px !important;' +
         '  }' +
         '}';
       document.head.appendChild(st);
