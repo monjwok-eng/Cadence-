@@ -92,6 +92,7 @@ export function VoiceWidgetPopup({
   const [callActive, setCallActive] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const [leadDrawerOpen, setLeadDrawerOpen] = useState(false);
+  const [showAgreementModal, setShowAgreementModal] = useState(false);
 
   const [sessionId] = useState(
     () => `wsess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -179,13 +180,27 @@ export function VoiceWidgetPopup({
     }
   };
 
+  const handleOrbPress = () => {
+    if (!hasAgreed) {
+      setShowAgreementModal(true);
+      return;
+    }
+    startCall();
+  };
+
   const handleAgreeTerms = () => {
     setHasAgreed(true);
+    setShowAgreementModal(false);
     if (typeof window !== 'undefined') {
       try {
         window.sessionStorage.setItem(voiceConsentKey, 'true');
       } catch {}
     }
+    startCall();
+  };
+
+  const handleCancelTerms = () => {
+    setShowAgreementModal(false);
   };
 
   const speakResponse = (text: string) => {
@@ -333,6 +348,11 @@ export function VoiceWidgetPopup({
     const cleanText = rawText.trim();
     if (!cleanText || voiceState === 'thinking') return;
 
+    if (!hasAgreed) {
+      setShowAgreementModal(true);
+      return;
+    }
+
     setNotice(null);
     turnCounterRef.current += 1;
     const userTurn: ChatTurn = {
@@ -461,80 +481,18 @@ export function VoiceWidgetPopup({
   };
 
   // -------------------------------------------------------------
-  // SCREEN 1: AGREEMENT MODAL (Matches user screenshot 1)
-  // -------------------------------------------------------------
-  if (!hasAgreed) {
-    return (
-      <div className="flex h-full w-full flex-col justify-between bg-white p-7 text-neutral-900 select-none">
-        <div>
-          <h2 className="text-[17px] font-semibold leading-snug text-neutral-900">
-            By clicking &apos;I agree&apos; and using this service, you are confirming:
-          </h2>
-
-          <ul className="mt-6 space-y-4 text-[13.5px] leading-relaxed text-neutral-600">
-            <li className="flex items-start gap-2.5">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
-              <span>You are over the age of 18</span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
-              <span>You acknowledge you are engaging with an AI service</span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
-              <span>You consent to being recorded to provide the conversational service</span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
-              <span>
-                You acknowledge our Privacy Policy, available at{' '}
-                <span className="underline cursor-pointer text-neutral-900">
-                  cadence.app/privacy-policy
-                </span>
-              </span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
-              <span>
-                You consent to the sharing of your data with third-parties as may be necessary to provide this service to you
-              </span>
-            </li>
-          </ul>
-        </div>
-
-        <div className="mt-8 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleCloseClick}
-            className="flex-1 rounded-full border border-neutral-300 bg-white py-3 text-sm font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 active:scale-[0.98]"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleAgreeTerms}
-            className="flex-1 rounded-full bg-black py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:scale-[0.98]"
-          >
-            I agree
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // -------------------------------------------------------------
-  // SCREEN 2: ACTIVE VOICE / ORB VIEW (Matches user screenshots 2, 3, 4)
+  // MAIN WIDGET VIEW
   // -------------------------------------------------------------
   return (
     <div className="relative flex h-full w-full flex-col justify-between overflow-hidden bg-white text-neutral-900">
       {/* Top Header Bar */}
-      <div className="flex shrink-0 items-center justify-between px-5 pt-4">
+      <div className="relative flex shrink-0 items-center justify-between px-5 pt-4 pb-1">
         {callActive || showTranscript ? (
           <button
             type="button"
             onClick={() => setShowTranscript((prev) => !prev)}
             aria-label="Toggle transcript"
-            className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
+            className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
               showTranscript
                 ? 'bg-neutral-900 text-white'
                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
@@ -543,17 +501,21 @@ export function VoiceWidgetPopup({
             <MessageSquare className="h-4 w-4" />
           </button>
         ) : (
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-xs">
-            <span role="img" aria-label="Language flag" className="text-sm">
-              🇺🇸
-            </span>
-            <span>English</span>
-            <ChevronDown className="h-3 w-3 text-neutral-400" />
-          </div>
+          <div className="w-9" />
         )}
 
+        {/* Centered Language Pill */}
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200/90 bg-white px-3.5 py-1.5 text-xs font-medium text-neutral-800 shadow-xs">
+          <span role="img" aria-label="Language flag" className="text-sm">
+            🇺🇸
+          </span>
+          <span>English</span>
+          <ChevronDown className="h-3 w-3 text-neutral-400" />
+        </div>
+
+        {/* Right Action: Minimize / Close button */}
         <div className="flex items-center gap-2">
-          {widget.leadCaptureEnabled && !leadSubmitted && (
+          {widget.leadCaptureEnabled && !leadSubmitted && callActive && (
             <button
               type="button"
               onClick={() => {
@@ -569,30 +531,9 @@ export function VoiceWidgetPopup({
 
           <button
             type="button"
-            onClick={() => {
-              const next = !speakerMuted;
-              setSpeakerMuted(next);
-              if (next && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                if (voiceState === 'speaking') setVoiceState('idle');
-              }
-            }}
-            title={speakerMuted ? 'Unmute voice' : 'Mute voice'}
-            aria-label="Toggle speaker mute"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition-colors hover:bg-neutral-200"
-          >
-            {speakerMuted ? (
-              <VolumeX className="h-4 w-4" />
-            ) : (
-              <Volume2 className="h-4 w-4" />
-            )}
-          </button>
-
-          <button
-            type="button"
             onClick={handleCloseClick}
             aria-label="Minimize widget"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition-colors hover:bg-neutral-200"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition-colors hover:bg-neutral-200"
           >
             <Minimize2 className="h-4 w-4" />
           </button>
@@ -712,7 +653,7 @@ export function VoiceWidgetPopup({
           <div className="flex flex-col items-center justify-center text-center">
             <CadenceVoiceOrb
               state={voiceState}
-              onStartCall={startCall}
+              onStartCall={handleOrbPress}
               size={184}
             />
 
@@ -723,7 +664,7 @@ export function VoiceWidgetPopup({
                   Connecting...
                 </p>
               ) : voiceState === 'speaking' ? (
-                <p className="text-sm font-medium text-neutral-500">
+                <p className="text-sm font-medium text-sky-600">
                   Speaking...
                 </p>
               ) : voiceState === 'listening' ? (
@@ -735,7 +676,7 @@ export function VoiceWidgetPopup({
                   Thinking...
                 </p>
               ) : (
-                <p className="max-w-[260px] text-sm leading-snug text-neutral-600">
+                <p className="max-w-[270px] text-[13.5px] leading-relaxed text-neutral-500 font-normal">
                   Discover the capabilities of Conversational Agents powered by Cadence
                 </p>
               )}
@@ -752,14 +693,18 @@ export function VoiceWidgetPopup({
 
       {/* Bottom Controls Bar */}
       <div className="shrink-0 p-4 pt-1">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Rounded Pill Text Input */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              if (!hasAgreed) {
+                setShowAgreementModal(true);
+                return;
+              }
               sendMessage(inputValue);
             }}
-            className="flex flex-1 items-center rounded-full border border-neutral-200 bg-white px-4 py-2.5 shadow-xs transition-colors focus-within:border-neutral-400"
+            className="flex flex-1 items-center rounded-full border border-neutral-200/90 bg-white px-4 py-3 shadow-xs transition-colors focus-within:border-neutral-400"
           >
             <input
               type="text"
@@ -778,24 +723,15 @@ export function VoiceWidgetPopup({
             </button>
           </form>
 
-          {/* Call Control Button (Mute/Hangup when active, or mic button) */}
-          {callActive ? (
+          {/* Call Control Button - ONLY shown when call is active/connecting */}
+          {callActive && (
             <button
               type="button"
               onClick={endCall}
               aria-label="End voice call"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black text-white shadow-md transition-transform hover:scale-105 active:scale-95"
             >
               <PhoneOff className="h-5 w-5" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={startCall}
-              aria-label="Start voice call"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white shadow-md transition-transform hover:scale-105 active:scale-95"
-            >
-              <Mic className="h-5 w-5" />
             </button>
           )}
         </div>
@@ -809,6 +745,69 @@ export function VoiceWidgetPopup({
           </span>
         </div>
       </div>
+
+      {/* AGREEMENT MODAL OVERLAY (Triggered when user presses the orb or attempts interaction before agreeing) */}
+      {showAgreementModal && (
+        <div className="absolute inset-0 z-50 flex flex-col justify-between bg-white p-7 text-neutral-900 select-none animate-in fade-in duration-200">
+          <div>
+            <h2 className="text-[17px] font-semibold leading-snug text-neutral-900">
+              By clicking &apos;I agree&apos; and using this service, you are confirming:
+            </h2>
+
+            <ul className="mt-6 space-y-4 text-[13.5px] leading-relaxed text-neutral-600">
+              <li className="flex items-start gap-2.5">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+                <span>You are over the age of 18</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+                <span>You acknowledge you are engaging with an AI service</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+                <span>You consent to being recorded to provide the conversational service</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+                <span>
+                  You acknowledge our Privacy Policy, available at{' '}
+                  <a
+                    href="/privacy-policy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline cursor-pointer font-medium text-neutral-900"
+                  >
+                    cadence.ai/privacy-policy
+                  </a>
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+                <span>
+                  You consent to the sharing of your data with third-parties as may be necessary to provide this service to you
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="mt-8 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleCancelTerms}
+              className="flex-1 rounded-full border border-neutral-300 bg-white py-3 text-sm font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 active:scale-[0.98]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAgreeTerms}
+              className="flex-1 rounded-full bg-black py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:scale-[0.98]"
+            >
+              I agree
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

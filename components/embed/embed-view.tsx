@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/components/providers/app-provider';
 import { VoiceWidgetPopup } from '@/components/embed/voice-widget-popup';
+import { CadenceOrbLauncherIcon } from '@/components/embed/cadence-orb';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VoiceAgent, WidgetPosition, WidgetTheme } from '@/lib/types';
@@ -595,45 +596,41 @@ function EmbedEditor({ selectedAgent }: { selectedAgent: VoiceAgent }) {
               </div>
             )}
 
-            {/* Floating Circular Bot Button (Tap to Open) */}
+            {/* Floating Horizontal Pill Voice Chatbot Launcher Button (Tap to Open) */}
             <div
-              className={`group absolute bottom-4 z-30 flex items-center gap-2.5 ${
-                widgetPosition === 'bottom-left'
-                  ? 'left-4 flex-row-reverse'
-                  : 'right-4 flex-row'
+              className={`absolute bottom-4 z-30 ${
+                widgetPosition === 'bottom-left' ? 'left-4' : 'right-4'
               }`}
             >
-              {!previewOpen && launcherLabel.trim() && (
-                <span
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold shadow-md transition-opacity ${
-                    widgetTheme === 'dark'
-                      ? 'border border-neutral-800 bg-neutral-900 text-neutral-100'
-                      : 'border border-neutral-200/80 bg-white text-neutral-800'
-                  }`}
-                >
-                  {launcherLabel}
-                </span>
-              )}
-
               <button
                 type="button"
                 onClick={() => setPreviewOpen((o) => !o)}
                 aria-label={
                   previewOpen
-                    ? `Minimize ${selectedAgent.name}`
+                    ? `Close ${selectedAgent.name}`
                     : `Open ${selectedAgent.name}`
                 }
-                style={{
-                  background:
-                    'radial-gradient(circle at 35% 25%, #d9f99d 0%, #a7f3d0 20%, #38bdf8 45%, #0284c7 78%, #0369a1 100%)',
-                  boxShadow:
-                    'inset -3px -4px 8px rgba(2, 44, 95, 0.45), inset 3px 3px 6px rgba(255, 255, 255, 0.65), 0 12px 30px rgba(14, 165, 233, 0.42)',
-                }}
-                className="flex h-14 w-14 items-center justify-center rounded-full text-white transition-transform duration-150 hover:scale-105 active:scale-95"
+                className={`inline-flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-4 text-sm font-medium shadow-md transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] ${
+                  widgetTheme === 'dark'
+                    ? 'border border-neutral-700 bg-neutral-900 text-neutral-100 shadow-neutral-950/40'
+                    : 'border border-neutral-200/90 bg-white text-neutral-900 shadow-neutral-300/40'
+                }`}
               >
                 {previewOpen ? (
-                  <X className="h-6 w-6 text-white" />
-                ) : null}
+                  <>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 font-semibold text-xs">
+                      ✕
+                    </span>
+                    <span>Close</span>
+                  </>
+                ) : (
+                  <>
+                    <CadenceOrbLauncherIcon className="h-7 w-7" />
+                    <span className="tracking-tight">
+                      {launcherLabel.trim() || 'Voice chat'}
+                    </span>
+                  </>
+                )}
               </button>
             </div>
           </div>

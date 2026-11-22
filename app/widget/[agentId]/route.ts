@@ -49,6 +49,33 @@ export async function GET(
     var isLeft = cfg.widgetPosition === 'bottom-left';
     var sideProp = isLeft ? 'left' : 'right';
 
+    var isDark = cfg.widgetTheme === 'dark';
+    var launcherText = (cfg.launcherLabel || 'Voice chat').trim();
+
+    // Inject responsive CSS for centered launcher and fluid panel on mobile
+    var styleId = 'cadence-widget-styles-' + agentId;
+    if (!document.getElementById(styleId)) {
+      var st = document.createElement('style');
+      st.id = styleId;
+      st.textContent = 
+        '@media (max-width: 640px) {' +
+        '  #cadence-widget-root-' + agentId + ' {' +
+        '    left: 50% !important;' +
+        '    right: auto !important;' +
+        '    transform: translateX(-50%) !important;' +
+        '    bottom: 20px !important;' +
+        '  }' +
+        '  #cadence-widget-panel-' + agentId + ' {' +
+        '    left: 12px !important;' +
+        '    right: 12px !important;' +
+        '    width: calc(100vw - 24px) !important;' +
+        '    bottom: 78px !important;' +
+        '    max-height: calc(100vh - 96px) !important;' +
+        '  }' +
+        '}';
+      document.head.appendChild(st);
+    }
+
     var root = document.createElement('div');
     root.id = 'cadence-widget-root-' + agentId;
     root.style.position = 'fixed';
@@ -58,17 +85,18 @@ export async function GET(
     root.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
     var panel = document.createElement('div');
+    panel.id = 'cadence-widget-panel-' + agentId;
     panel.style.position = 'fixed';
-    panel.style.bottom = '90px';
+    panel.style.bottom = '84px';
     panel.style[sideProp] = '20px';
     panel.style.width = '392px';
     panel.style.maxWidth = 'calc(100vw - 24px)';
-    panel.style.height = '596px';
-    panel.style.maxHeight = 'calc(100vh - 112px)';
-    panel.style.borderRadius = '20px';
+    panel.style.height = '610px';
+    panel.style.maxHeight = 'calc(100vh - 104px)';
+    panel.style.borderRadius = '28px';
     panel.style.overflow = 'hidden';
-    panel.style.boxShadow = '0 24px 64px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(15, 23, 42, 0.08)';
-    panel.style.background = cfg.widgetTheme === 'dark' ? '#0a0a0a' : '#ffffff';
+    panel.style.boxShadow = '0 20px 60px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.06)';
+    panel.style.background = isDark ? '#0a0a0a' : '#ffffff';
     panel.style.display = 'none';
     panel.style.opacity = '0';
     panel.style.transform = 'translateY(12px) scale(0.97)';
@@ -77,51 +105,31 @@ export async function GET(
     panel.style.zIndex = '2147483001';
 
     var iframeEl = null;
-    var btnRow = document.createElement('div');
-    btnRow.style.display = 'flex';
-    btnRow.style.alignItems = 'center';
-    btnRow.style.flexDirection = isLeft ? 'row-reverse' : 'row';
-    btnRow.style.gap = '10px';
 
-    var tooltip = document.createElement('div');
-    tooltip.textContent = cfg.launcherLabel || 'Talk with us';
-    tooltip.style.background = cfg.widgetTheme === 'dark' ? '#171717' : '#ffffff';
-    tooltip.style.color = cfg.widgetTheme === 'dark' ? '#f5f5f5' : '#171717';
-    tooltip.style.fontSize = '13px';
-    tooltip.style.fontWeight = '600';
-    tooltip.style.padding = '7px 12px';
-    tooltip.style.borderRadius = '9999px';
-    tooltip.style.boxShadow = '0 8px 24px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06)';
-    tooltip.style.pointerEvents = 'none';
-    tooltip.style.opacity = '0';
-    tooltip.style.transition = 'opacity 160ms ease';
-    tooltip.style.whiteSpace = 'nowrap';
-
+    // Horizontal Pill Launcher Button (Matches user screenshot 1)
     var button = document.createElement('button');
     button.type = 'button';
-    button.setAttribute('aria-label', 'Open ' + (cfg.name || 'voice chatbot'));
+    button.setAttribute('aria-label', 'Open ' + launcherText);
     button.setAttribute('aria-expanded', 'false');
-    button.style.width = '62px';
-    button.style.height = '62px';
+    button.style.background = isDark ? '#171717' : '#ffffff';
+    button.style.color = isDark ? '#f5f5f5' : '#171717';
+    button.style.border = isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid rgba(0, 0, 0, 0.08)';
     button.style.borderRadius = '9999px';
-    button.style.border = 'none';
-    button.style.background = 'radial-gradient(circle at 35% 25%, #d9f99d 0%, #a7f3d0 20%, #38bdf8 45%, #0284c7 78%, #0369a1 100%)';
-    button.style.color = '#ffffff';
-    button.style.cursor = 'pointer';
+    button.style.padding = '5px 16px 5px 6px';
     button.style.display = 'inline-flex';
     button.style.alignItems = 'center';
-    button.style.justifyContent = 'center';
-    button.style.boxShadow = 'inset -3px -4px 8px rgba(2, 44, 95, 0.45), inset 3px 3px 6px rgba(255, 255, 255, 0.65), 0 12px 30px rgba(14, 165, 233, 0.42)';
-    button.style.transition = 'transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms ease';
-    button.style.padding = '0';
+    button.style.gap = '8px';
+    button.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.04)';
+    button.style.cursor = 'pointer';
+    button.style.transition = 'transform 180ms ease, box-shadow 180ms ease';
     button.style.outline = 'none';
+    button.style.webkitTapHighlightColor = 'transparent';
 
-    var closeIconSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<line x1="18" y1="6" x2="6" y2="18"></line>' +
-      '<line x1="6" y1="6" x2="18" y2="18"></line>' +
-      '</svg>';
+    var miniOrbHtml = '<span style="display:inline-block;width:28px;height:28px;border-radius:9999px;background:radial-gradient(circle at 35% 25%, #d9f99d 0%, #a7f3d0 20%, #38bdf8 45%, #0284c7 78%, #0369a1 100%);box-shadow:inset -1px -2px 4px rgba(2, 44, 95, 0.45), inset 1px 1px 3px rgba(255, 255, 255, 0.65), 0 2px 8px rgba(14, 165, 233, 0.35);flex-shrink:0;"></span>';
+    var textLabelHtml = '<span style="font-size:14px;font-weight:500;color:' + (isDark ? '#f5f5f5' : '#171717') + ';letter-spacing:-0.01em;white-space:nowrap;">' + launcherText + '</span>';
+    var closeContentHtml = '<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:9999px;background:' + (isDark ? '#262626' : '#f3f4f6') + ';color:' + (isDark ? '#e5e5e5' : '#374151') + ';font-size:13px;font-weight:600;flex-shrink:0;">✕</span><span style="font-size:14px;font-weight:500;color:' + (isDark ? '#f5f5f5' : '#171717') + ';white-space:nowrap;">Close</span>';
 
-    button.innerHTML = '';
+    button.innerHTML = miniOrbHtml + textLabelHtml;
     var isOpen = false;
 
     function openPanel() {
@@ -137,9 +145,8 @@ export async function GET(
         panel.appendChild(iframeEl);
       }
       isOpen = true;
-      tooltip.style.opacity = '0';
       panel.style.display = 'block';
-      button.innerHTML = closeIconSvg;
+      button.innerHTML = closeContentHtml;
       button.setAttribute('aria-expanded', 'true');
       button.setAttribute('aria-label', 'Close ' + (cfg.name || 'voice chatbot'));
       window.requestAnimationFrame(function () {
@@ -150,7 +157,7 @@ export async function GET(
 
     function closePanel() {
       isOpen = false;
-      button.innerHTML = '';
+      button.innerHTML = miniOrbHtml + textLabelHtml;
       button.setAttribute('aria-expanded', 'false');
       button.setAttribute('aria-label', 'Open ' + (cfg.name || 'voice chatbot'));
       panel.style.opacity = '0';
@@ -165,13 +172,13 @@ export async function GET(
     });
 
     button.addEventListener('mouseenter', function () {
-      button.style.transform = 'scale(1.06)';
-      if (!isOpen && window.innerWidth >= 640) { tooltip.style.opacity = '1'; }
+      button.style.transform = 'scale(1.03)';
+      button.style.boxShadow = '0 6px 24px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.05)';
     });
 
     button.addEventListener('mouseleave', function () {
       button.style.transform = 'scale(1)';
-      tooltip.style.opacity = '0';
+      button.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.04)';
     });
 
     window.addEventListener('message', function (ev) {
@@ -180,10 +187,8 @@ export async function GET(
       }
     });
 
-    btnRow.appendChild(tooltip);
-    btnRow.appendChild(button);
     root.appendChild(panel);
-    root.appendChild(btnRow);
+    root.appendChild(button);
     document.body.appendChild(root);
   }
 })();`;
