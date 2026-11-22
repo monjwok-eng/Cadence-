@@ -87,22 +87,36 @@ export async function GET(
     var panel = document.createElement('div');
     panel.id = 'cadence-widget-panel-' + agentId;
     panel.style.position = 'fixed';
-    panel.style.bottom = '84px';
-    panel.style[sideProp] = '20px';
-    panel.style.width = '392px';
-    panel.style.maxWidth = 'calc(100vw - 24px)';
-    panel.style.height = '610px';
-    panel.style.maxHeight = 'calc(100vh - 104px)';
-    panel.style.borderRadius = '28px';
-    panel.style.overflow = 'hidden';
-    panel.style.boxShadow = '0 20px 60px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.06)';
-    panel.style.background = isDark ? '#0a0a0a' : '#ffffff';
+    panel.style.inset = '0';
+    panel.style.background = 'rgba(0, 0, 0, 0.45)';
+    panel.style.backdropFilter = 'blur(4px)';
+    panel.style.webkitBackdropFilter = 'blur(4px)';
     panel.style.display = 'none';
+    panel.style.alignItems = 'center';
+    panel.style.justifyContent = 'center';
+    panel.style.padding = '16px';
     panel.style.opacity = '0';
-    panel.style.transform = 'translateY(12px) scale(0.97)';
-    panel.style.transformOrigin = isLeft ? 'bottom left' : 'bottom right';
-    panel.style.transition = 'opacity 180ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1)';
+    panel.style.transition = 'opacity 200ms ease';
     panel.style.zIndex = '2147483001';
+
+    var card = document.createElement('div');
+    card.style.width = '400px';
+    card.style.maxWidth = '100%';
+    card.style.height = '610px';
+    card.style.maxHeight = 'calc(100vh - 32px)';
+    card.style.borderRadius = '28px';
+    card.style.overflow = 'hidden';
+    card.style.boxShadow = '0 24px 64px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(0, 0, 0, 0.08)';
+    card.style.background = isDark ? '#0a0a0a' : '#ffffff';
+    card.style.transform = 'scale(0.95)';
+    card.style.transition = 'transform 200ms cubic-bezier(0.22, 1, 0.36, 1)';
+    panel.appendChild(card);
+
+    panel.addEventListener('click', function (e) {
+      if (e.target === panel) {
+        closePanel();
+      }
+    });
 
     var iframeEl = null;
 
@@ -142,16 +156,16 @@ export async function GET(
         iframeEl.style.height = '100%';
         iframeEl.style.border = 'none';
         iframeEl.style.display = 'block';
-        panel.appendChild(iframeEl);
+        card.appendChild(iframeEl);
       }
       isOpen = true;
-      panel.style.display = 'block';
+      panel.style.display = 'flex';
       button.innerHTML = closeContentHtml;
       button.setAttribute('aria-expanded', 'true');
       button.setAttribute('aria-label', 'Close ' + (cfg.name || 'voice chatbot'));
       window.requestAnimationFrame(function () {
         panel.style.opacity = '1';
-        panel.style.transform = 'translateY(0) scale(1)';
+        card.style.transform = 'scale(1)';
       });
     }
 
@@ -161,10 +175,10 @@ export async function GET(
       button.setAttribute('aria-expanded', 'false');
       button.setAttribute('aria-label', 'Open ' + (cfg.name || 'voice chatbot'));
       panel.style.opacity = '0';
-      panel.style.transform = 'translateY(12px) scale(0.97)';
+      card.style.transform = 'scale(0.95)';
       window.setTimeout(function () {
         if (!isOpen) panel.style.display = 'none';
-      }, 190);
+      }, 200);
     }
 
     button.addEventListener('click', function () {

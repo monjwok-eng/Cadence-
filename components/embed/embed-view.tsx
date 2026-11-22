@@ -550,49 +550,53 @@ function EmbedEditor({ selectedAgent }: { selectedAgent: VoiceAgent }) {
               </div>
             </div>
 
-            {/* Floating Expandable Voice Chatbot Panel */}
+            {/* Floating Expandable Voice Chatbot Centered Modal */}
             {previewOpen && (
               <div
-                className={`absolute bottom-20 z-20 h-[405px] w-[320px] max-w-[calc(100%-24px)] overflow-hidden rounded-2xl border shadow-2xl ${
-                  widgetPosition === 'bottom-left' ? 'left-4' : 'right-4'
-                } ${
-                  widgetTheme === 'dark'
-                    ? 'border-neutral-800 bg-neutral-950'
-                    : 'border-neutral-200 bg-white'
-                }`}
+                onClick={() => setPreviewOpen(false)}
+                className="absolute inset-0 z-40 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-in fade-in duration-200"
               >
-                <VoiceWidgetPopup
-                  widget={{
-                    id: selectedAgent.id,
-                    name: selectedAgent.name,
-                    businessName: selectedAgent.businessName,
-                    voiceId: selectedAgent.voiceId,
-                    voiceLabel: selectedAgent.voiceLabel,
-                    language: selectedAgent.language,
-                    welcomeMessage,
-                    accentColor: safeAccent,
-                    widgetTheme,
-                    launcherLabel,
-                    leadCaptureEnabled,
-                    status: selectedAgent.status,
-                  }}
-                  hostDomain={
-                    typeof window !== 'undefined' ? window.location.hostname : ''
-                  }
-                  sourcePageUrl={websiteUrl}
-                  onClose={() => setPreviewOpen(false)}
-                  fallbackInteractContext={{
-                    agentConfig: {
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className={`relative h-[610px] w-full max-w-[400px] overflow-hidden rounded-[28px] border shadow-2xl ${
+                    widgetTheme === 'dark'
+                      ? 'border-neutral-800 bg-neutral-950 text-neutral-100'
+                      : 'border-neutral-200 bg-white text-neutral-900'
+                  }`}
+                >
+                  <VoiceWidgetPopup
+                    widget={{
+                      id: selectedAgent.id,
                       name: selectedAgent.name,
                       businessName: selectedAgent.businessName,
-                      personality: selectedAgent.personality,
-                      customInstructions: selectedAgent.customInstructions,
+                      voiceId: selectedAgent.voiceId,
+                      voiceLabel: selectedAgent.voiceLabel,
                       language: selectedAgent.language,
-                      websiteUrl: websiteUrl.trim() || selectedAgent.websiteUrl,
-                    },
-                    knowledgeItems: relevantKnowledgeItems,
-                  }}
-                />
+                      welcomeMessage,
+                      accentColor: safeAccent,
+                      widgetTheme,
+                      launcherLabel,
+                      leadCaptureEnabled,
+                      status: selectedAgent.status,
+                    }}
+                    hostDomain={
+                      typeof window !== 'undefined' ? window.location.hostname : ''
+                    }
+                    sourcePageUrl={websiteUrl}
+                    onClose={() => setPreviewOpen(false)}
+                    fallbackInteractContext={{
+                      agentConfig: {
+                        name: selectedAgent.name,
+                        businessName: selectedAgent.businessName,
+                        personality: selectedAgent.personality,
+                        customInstructions: selectedAgent.customInstructions,
+                        language: selectedAgent.language,
+                        websiteUrl: websiteUrl.trim() || selectedAgent.websiteUrl,
+                      },
+                      knowledgeItems: relevantKnowledgeItems,
+                    }}
+                  />
+                </div>
               </div>
             )}
 

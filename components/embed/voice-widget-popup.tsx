@@ -7,7 +7,7 @@ import {
   MessageSquare,
   Mic,
   MicOff,
-  Minimize2,
+  Maximize2,
   Phone,
   PhoneOff,
   Send,
@@ -535,7 +535,7 @@ export function VoiceWidgetPopup({
             aria-label="Minimize widget"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition-colors hover:bg-neutral-200"
           >
-            <Minimize2 className="h-4 w-4" />
+            <Maximize2 className="h-4 w-4" />
           </button>
         </div>
       </div>
