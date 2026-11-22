@@ -77,9 +77,14 @@ export function VoiceWidgetPopup({
     knowledgeItems: { sourceName: string; sourceType: string; content: string }[];
   };
 }) {
+  const voiceConsentKey = `cadence_voice_consent_${widget.id}`;
   const [hasAgreed, setHasAgreed] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return window.localStorage.getItem('cadence_voice_terms_agreed') === 'true';
+      try {
+        return window.sessionStorage.getItem(voiceConsentKey) === 'true';
+      } catch {
+        return false;
+      }
     }
     return false;
   });
@@ -178,7 +183,7 @@ export function VoiceWidgetPopup({
     setHasAgreed(true);
     if (typeof window !== 'undefined') {
       try {
-        window.localStorage.setItem('cadence_voice_terms_agreed', 'true');
+        window.sessionStorage.setItem(voiceConsentKey, 'true');
       } catch {}
     }
   };

@@ -90,7 +90,6 @@ export function CadenceOrbLauncherIcon({ className = 'h-7 w-7' }: { className?: 
       className={`rounded-full relative flex items-center justify-center ${className}`}
     >
       <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.7)_0%,transparent_50%)]" />
-      <Phone className="h-3.5 w-3.5 text-white fill-white drop-shadow-xs" />
     </div>
   );
 }

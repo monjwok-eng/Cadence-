@@ -633,9 +633,7 @@ function EmbedEditor({ selectedAgent }: { selectedAgent: VoiceAgent }) {
               >
                 {previewOpen ? (
                   <X className="h-6 w-6 text-white" />
-                ) : (
-                  <Phone className="h-6 w-6 text-white fill-white" />
-                )}
+                ) : null}
               </button>
             </div>
           </div>
