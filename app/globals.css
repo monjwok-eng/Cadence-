@@ -1,11 +1,11 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  --font-display: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  --font-serif: 'Iowan Old Style', 'Times New Roman', 'Liberation Serif', 'Noto Serif', Times, Georgia, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+@theme inline {
+  --font-sans: var(--font-sans-face), system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: var(--font-display-face), var(--font-sans-face), system-ui, sans-serif;
+  --font-serif: 'Iowan Old Style', 'Times New Roman', 'Liberation Serif', Times, Georgia, serif;
+  --font-mono: var(--font-mono-face), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 @layer base {
@@ -23,7 +23,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  @keyframes cadenceOrbBreathe {
+  @keyframes cadence-orb-breathe {
     0%, 100% {
       transform: scale(1);
       filter: brightness(1);
@@ -34,7 +34,7 @@
     }
   }
 
-  @keyframes cadenceOrbListening {
+  @keyframes cadence-orb-listening {
     0%, 100% {
       transform: scale(1);
     }

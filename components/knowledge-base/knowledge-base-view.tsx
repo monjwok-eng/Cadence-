@@ -49,7 +49,15 @@ function sourceTypeLabel(type: KnowledgeSourceType): string {
   return 'Text';
 }
 
-export function KnowledgeBaseView() {
+export function KnowledgeBaseView({
+  scopedAgentId,
+  initialSourceType,
+  embedded = false,
+}: {
+  scopedAgentId?: string;
+  initialSourceType?: KnowledgeSourceType;
+  embedded?: boolean;
+} = {}) {
   const {
     isReady,
     activeWorkspace,
@@ -63,10 +71,12 @@ export function KnowledgeBaseView() {
   } = useApp();
 
   const [mainTab, setMainTab] = useState<MainTab>('sources');
-  const [activeTab, setActiveTab] = useState<AddTab>('website');
+  const [activeTab, setActiveTab] = useState<AddTab>(initialSourceType || 'website');
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | KnowledgeSourceType>('all');
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | KnowledgeSourceType>(
+    initialSourceType || 'all'
+  );
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(scopedAgentId || 'all');
 
   // Website form
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -92,7 +102,14 @@ export function KnowledgeBaseView() {
   const [sourceToDelete, setSourceToDelete] = useState<KnowledgeSource | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const filteredSources = knowledgeSources.filter((src) => {
+  const effectiveAgentFilter = scopedAgentId || null;
+  const scopedKnowledgeSources = effectiveAgentFilter
+    ? knowledgeSources.filter(
+        (src) => src.agentId === effectiveAgentFilter || src.agentId === 'all' || !src.agentId
+      )
+    : knowledgeSources;
+
+  const filteredSources = scopedKnowledgeSources.filter((src) => {
     const matchesType = typeFilter === 'all' || src.sourceType === typeFilter;
     const q = searchQuery.trim().toLowerCase();
     const detail = sourceDetailText(src).toLowerCase();
@@ -307,46 +324,80 @@ export function KnowledgeBaseView() {
   return (
     <div className="space-y-6">
       {/* Header with Main Navigation Tabs */}
-      <div className="flex flex-col justify-between gap-4 border-b border-neutral-200 pb-6 sm:flex-row sm:items-center dark:border-neutral-800">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-            Knowledge Sources &amp; Training
-          </h1>
-          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Train your website voice chatbots with crawled pages, uploaded documents, and custom Q&amp;A scripts.
-          </p>
-        </div>
+      {!embedded ? (
+        <div className="flex flex-col justify-between gap-4 border-b border-neutral-200 pb-6 sm:flex-row sm:items-center dark:border-neutral-800">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
+              Knowledge Sources &amp; Training
+            </h1>
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+              Train your website voice chatbots with crawled pages, uploaded documents, and custom Q&amp;A scripts.
+            </p>
+          </div>
 
-        <div className="inline-flex items-center gap-1 rounded-xl bg-neutral-100 p-1.5 dark:bg-neutral-800">
-          <button
-            type="button"
-            onClick={() => setMainTab('sources')}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-colors ${
-              mainTab === 'sources'
-                ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-900 dark:text-neutral-100'
-                : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
-            }`}
-          >
-            <BookOpen className="h-4 w-4 text-indigo-600" />
-            Knowledge Sources ({knowledgeSources.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setMainTab('playground')}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-colors ${
-              mainTab === 'playground'
-                ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-900 dark:text-neutral-100'
-                : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
-            }`}
-          >
-            <Sparkles className="h-4 w-4 text-indigo-600" />
-            Test RAG Playground
-          </button>
+          <div className="inline-flex items-center gap-1 rounded-xl bg-neutral-100 p-1.5 dark:bg-neutral-800">
+            <button
+              type="button"
+              onClick={() => setMainTab('sources')}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-colors ${
+                mainTab === 'sources'
+                  ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-900 dark:text-neutral-100'
+                  : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
+            >
+              <BookOpen className="h-4 w-4 text-indigo-600" />
+              Knowledge Sources ({scopedKnowledgeSources.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('playground')}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-colors ${
+                mainTab === 'playground'
+                  ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-900 dark:text-neutral-100'
+                  : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
+            >
+              <Sparkles className="h-4 w-4 text-indigo-600" />
+              Test RAG Playground
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Train this chatbot with website pages, uploaded files, or Q&amp;A snippets.
+          </p>
+          <div className="inline-flex items-center gap-1 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800">
+            <button
+              type="button"
+              onClick={() => setMainTab('sources')}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                mainTab === 'sources'
+                  ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-900 dark:text-neutral-100'
+                  : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
+            >
+              <BookOpen className="h-3.5 w-3.5 text-indigo-600" />
+              Sources ({scopedKnowledgeSources.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('playground')}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                mainTab === 'playground'
+                  ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-900 dark:text-neutral-100'
+                  : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+              Test RAG
+            </button>
+          </div>
+        </div>
+      )}
 
       {mainTab === 'playground' ? (
-        <KnowledgePlayground />
+        <KnowledgePlayground scopedAgentId={scopedAgentId} />
       ) : (
         <>
           {/* Add Knowledge Source Panel */}
@@ -380,27 +431,29 @@ export function KnowledgeBaseView() {
                 })}
               </div>
 
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="kb-agent-assign"
-                  className="text-xs font-medium text-neutral-500 dark:text-neutral-400 whitespace-nowrap"
-                >
-                  Assign to agent:
-                </label>
-                <select
-                  id="kb-agent-assign"
-                  value={selectedAgentId}
-                  onChange={(e) => setSelectedAgentId(e.target.value)}
-                  className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-800 focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200"
-                >
-                  <option value="all">All Workspace Agents</option>
-                  {agents.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!scopedAgentId && (
+                <div className="flex items-center gap-2">
+                  <label
+                    htmlFor="kb-agent-assign"
+                    className="text-xs font-medium text-neutral-500 dark:text-neutral-400 whitespace-nowrap"
+                  >
+                    Assign to chatbot:
+                  </label>
+                  <select
+                    id="kb-agent-assign"
+                    value={selectedAgentId}
+                    onChange={(e) => setSelectedAgentId(e.target.value)}
+                    className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-800 focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200"
+                  >
+                    <option value="all">All Workspace Chatbots</option>
+                    {agents.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="p-5">

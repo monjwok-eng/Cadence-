@@ -55,6 +55,8 @@ import {
   ensureUserOnboarding,
   inviteWorkspaceMemberInDb,
   removeWorkspaceMemberInDb,
+  saveOnboardingInDb,
+  selectPlanInDb,
   subscribeUserWorkspaces,
   subscribePublicWidgetLeads,
   subscribePublicWidgetTurns,
@@ -79,11 +81,14 @@ import {
 import {
   AgentStatus,
   ApiKeyItem,
+  BillingCycle,
   CallRecord,
   KnowledgeSource,
   Lead,
   LeadStatus,
+  OnboardingData,
   PhoneNumberItem,
+  PlanTier,
   TeamMember,
   UserProfile,
   VoiceAgent,
@@ -106,6 +111,7 @@ const ACTIVE_WS_STORAGE_KEY = 'cadence_active_ws_v1';
 interface AppContextValue {
   authReady: boolean;
   isReady: boolean;
+  isLoading: boolean;
   firebaseUser: User | null;
   isEmailVerified: boolean;
   backendError: string | null;
@@ -135,6 +141,17 @@ interface AppContextValue {
     email: string;
     roleTitle: string;
   }) => Promise<void>;
+  saveOnboardingProgress: (
+    data: OnboardingData,
+    completed: boolean
+  ) => Promise<void>;
+  selectPricingPlan: (input: {
+    planName: PlanTier;
+    billingCycle: BillingCycle;
+    subscriptionStatus: 'active' | 'trialing';
+    billingProvider: string;
+    enterpriseContact?: { company?: string; notes?: string };
+  }) => Promise<void>;
   createWorkspace: (name: string, industry: string) => Promise<void>;
   updateWorkspace: (
     id: string,
@@ -154,7 +171,7 @@ interface AppContextValue {
       | 'leadsCaptured'
       | 'updatedAt'
     >
-  ) => Promise<void>;
+  ) => Promise<string>;
   updateAgent: (id: string, updates: Partial<VoiceAgent>) => Promise<void>;
   deleteAgent: (id: string) => Promise<void>;
   toggleAgentStatus: (id: string, status: AgentStatus) => Promise<void>;
@@ -230,6 +247,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [authReady, setAuthReady] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [loadedAgentsWorkspaceId, setLoadedAgentsWorkspaceId] = useState<string | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [backendError, setBackendError] = useState<string | null>(null);
@@ -259,18 +277,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }>({});
   const cookieConsentRef = useRef<CookieConsentValue | null>(null);
 
-  const applyThemeClass = useCallback((mode: ThemeMode) => {
+  const applyThemeClass = useCallback(() => {
     if (typeof document === 'undefined') return;
-    if (mode === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.remove('dark');
   }, []);
 
   useEffect(() => {
     queueMicrotask(() => {
       try {
+        applyThemeClass();
         const cookieChoice = getClientCookie(COOKIE_CONSENT_NAME);
         const storedChoice = window.localStorage.getItem(COOKIE_CONSENT_NAME);
         const resolvedChoice =
@@ -287,12 +302,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (resolvedChoice !== 'declined') {
-          const savedTheme =
-            getClientCookie(THEME_COOKIE_NAME) ||
-            window.localStorage.getItem(THEME_STORAGE_KEY);
-          if (savedTheme === 'dark' || savedTheme === 'light') {
-            setThemeState(savedTheme);
-            applyThemeClass(savedTheme);
+          window.localStorage.setItem(THEME_STORAGE_KEY, 'light');
+          if (resolvedChoice === 'accepted') {
+            setClientCookie(THEME_COOKIE_NAME, 'light');
           }
           const savedWs =
             getClientCookie(WORKSPACE_COOKIE_NAME) ||
@@ -328,14 +340,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const setTheme = useCallback(
-    (mode: ThemeMode) => {
-      setThemeState(mode);
-      applyThemeClass(mode);
+    (_mode: ThemeMode) => {
+      void _mode;
+      setThemeState('light');
+      applyThemeClass();
       if (cookieConsentRef.current === 'declined') return;
       try {
-        window.localStorage.setItem(THEME_STORAGE_KEY, mode);
+        window.localStorage.setItem(THEME_STORAGE_KEY, 'light');
         if (cookieConsentRef.current === 'accepted') {
-          setClientCookie(THEME_COOKIE_NAME, mode);
+          setClientCookie(THEME_COOKIE_NAME, 'light');
         }
       } catch {
         // Ignore
@@ -345,8 +358,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  }, [theme, setTheme]);
+    setTheme('light');
+  }, [setTheme]);
 
   useEffect(() => {
     setPersistence(auth, browserLocalPersistence).catch(() => {
@@ -376,6 +389,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setWidgetLeads([]);
         setTeamMembers([]);
         setApiKeys([]);
+        setLoadedAgentsWorkspaceId(null);
         setIsReady(true);
         setAuthReady(true);
         return;
@@ -534,7 +548,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const ownerId = activeWorkspace.ownerId;
 
     const unsubs = [
-      subscribeWorkspaceAgents(wsId, uid, setRawAgents),
+      subscribeWorkspaceAgents(wsId, uid, (list) => {
+        setRawAgents(list);
+        setLoadedAgentsWorkspaceId(wsId);
+      }),
       subscribeWorkspaceKnowledge(wsId, uid, setKnowledgeSources),
       subscribeWorkspacePhoneNumbers(wsId, uid, setConnectedNumbers),
       subscribeWorkspaceCalls(wsId, uid, setWorkspaceCalls),
@@ -730,6 +747,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [firebaseUser]
   );
 
+  const saveOnboardingProgress = useCallback(
+    async (data: OnboardingData, completed: boolean) => {
+      if (!firebaseUser) throw new Error('Authentication required.');
+      const cleanData = await saveOnboardingInDb(firebaseUser.uid, data, completed);
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              onboardingData: cleanData,
+              onboardingCompleted: completed,
+            }
+          : prev
+      );
+    },
+    [firebaseUser]
+  );
+
+  const selectPricingPlan = useCallback(
+    async (input: {
+      planName: PlanTier;
+      billingCycle: BillingCycle;
+      subscriptionStatus: 'active' | 'trialing';
+      billingProvider: string;
+      enterpriseContact?: { company?: string; notes?: string };
+    }) => {
+      if (!firebaseUser) throw new Error('Authentication required.');
+      await selectPlanInDb(firebaseUser.uid, activeWorkspace, input);
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              planSelected: true,
+              selectedPlan: input.planName,
+              billingCycle: input.billingCycle,
+            }
+          : prev
+      );
+    },
+    [firebaseUser, activeWorkspace]
+  );
+
   const createWorkspace = useCallback(
     async (name: string, industry: string) => {
       if (!firebaseUser || !user) throw new Error('Authentication required.');
@@ -775,9 +833,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         | 'leadsCaptured'
         | 'updatedAt'
       >
-    ) => {
+    ): Promise<string> => {
       if (!firebaseUser || !activeWorkspace) throw new Error('Workspace not ready.');
-      await createVoiceAgentInDb(activeWorkspace, firebaseUser.uid, input);
+      return await createVoiceAgentInDb(activeWorkspace, firebaseUser.uid, input);
     },
     [firebaseUser, activeWorkspace]
   );
@@ -993,11 +1051,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEditingAgent(null);
   }, []);
 
+  const agentsReady =
+    !firebaseUser ||
+    !isEmailVerified ||
+    !activeWorkspace ||
+    loadedAgentsWorkspaceId === activeWorkspace.id;
+
+  const isLoading = !authReady || !isReady || !agentsReady;
+
   return (
     <AppContext.Provider
       value={{
         authReady,
         isReady,
+        isLoading,
         firebaseUser,
         isEmailVerified,
         backendError,
@@ -1018,6 +1085,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         refreshAuthUser,
         logout,
         updateUser,
+        saveOnboardingProgress,
+        selectPricingPlan,
         createWorkspace,
         updateWorkspace,
         agents,

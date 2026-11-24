@@ -27,9 +27,15 @@ interface MessageItem {
   timestamp: string;
 }
 
-export function VoicePlayground() {
+export function VoicePlayground({
+  scopedAgentId,
+  embedded = false,
+}: {
+  scopedAgentId?: string;
+  embedded?: boolean;
+} = {}) {
   const { activeWorkspace, agents, knowledgeSources, pushToast } = useApp();
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(scopedAgentId || '');
   const [sessionState, setSessionState] = useState<SessionState>('Idle');
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [isMuted, setIsMuted] = useState(false);
@@ -44,7 +50,7 @@ export function VoicePlayground() {
   const isSpeakingRef = useRef<boolean>(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const activeAgentId = selectedAgentId || agents[0]?.id || '';
+  const activeAgentId = scopedAgentId || selectedAgentId || agents[0]?.id || '';
   const selectedAgent = agents.find((a) => a.id === activeAgentId) || agents[0];
 
   // Preload voices
@@ -346,47 +352,65 @@ export function VoicePlayground() {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-neutral-200 pb-6 dark:border-neutral-800">
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-          Voice Chat Test
-        </h1>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-          Speak directly with your website voice chatbot grounded in your crawled site pages and uploaded documents.
-        </p>
-      </div>
+      {!embedded && (
+        <div className="border-b border-neutral-200 pb-6 dark:border-neutral-800">
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
+            Voice Chat Test
+          </h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+            Speak directly with your website voice chatbot grounded in your crawled site pages and uploaded documents.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left: Chatbot & Controls */}
         <div className="space-y-6 lg:col-span-1">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-              Select Voice Chatbot
-            </h2>
-            <div className="mt-3 space-y-2">
-              {agents.map((agent) => (
-                <button
-                  key={agent.id}
-                  type="button"
-                  disabled={sessionState !== 'Idle' && sessionState !== 'Ended' && sessionState !== 'Failed'}
-                  onClick={() => setSelectedAgentId(agent.id)}
-                  className={`flex w-full items-center justify-between rounded-xl border p-3.5 text-left transition-all ${
-                    activeAgentId === agent.id
-                      ? 'border-indigo-600 bg-indigo-50/50 dark:border-indigo-500 dark:bg-indigo-950/30'
-                      : 'border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700'
-                  }`}
-                >
-                  <div>
-                    <p className="font-medium text-neutral-900 dark:text-neutral-100">{agent.name}</p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                      {agent.websiteUrl || agent.businessName} · {agent.voiceLabel}
-                    </p>
-                  </div>
-                  <Bot className={`h-5 w-5 ${activeAgentId === agent.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-400'}`} />
-                </button>
-              ))}
-            </div>
+          <div className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+            {scopedAgentId && selectedAgent ? (
+              <div>
+                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                  Active Voice Chatbot
+                </p>
+                <p className="mt-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                  {selectedAgent.name}
+                </p>
+                <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                  {selectedAgent.businessName} · {selectedAgent.voiceLabel}
+                </p>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                  Select Voice Chatbot
+                </h2>
+                <div className="mt-3 space-y-2">
+                  {agents.map((agent) => (
+                    <button
+                      key={agent.id}
+                      type="button"
+                      disabled={sessionState !== 'Idle' && sessionState !== 'Ended' && sessionState !== 'Failed'}
+                      onClick={() => setSelectedAgentId(agent.id)}
+                      className={`flex w-full items-center justify-between rounded-xl border p-3.5 text-left transition-all ${
+                        activeAgentId === agent.id
+                          ? 'border-indigo-600 bg-indigo-50/50 dark:border-indigo-500 dark:bg-indigo-950/30'
+                          : 'border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700'
+                      }`}
+                    >
+                      <div>
+                        <p className="font-medium text-neutral-900 dark:text-neutral-100">{agent.name}</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                          {agent.websiteUrl || agent.businessName} · {agent.voiceLabel}
+                        </p>
+                      </div>
+                      <Bot className={`h-5 w-5 ${activeAgentId === agent.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-400'}`} />
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
-            <div className="mt-6 border-t border-neutral-200 pt-5 dark:border-neutral-800">
+            <div className={`${scopedAgentId ? 'mt-4 border-t border-neutral-200 pt-4 dark:border-neutral-800' : 'mt-6 border-t border-neutral-200 pt-5 dark:border-neutral-800'}`}>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Status</span>
                 <span

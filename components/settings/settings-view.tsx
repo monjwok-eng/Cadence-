@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Building2,
   Check,
@@ -88,10 +89,12 @@ export function SettingsView() {
     calls.reduce((sum, c) => sum + c.durationSeconds, 0) / 60
   );
   const planMinutesLimit =
-    activeWorkspace?.planName === 'Growth'
-      ? 3000
-      : activeWorkspace?.planName === 'Enterprise'
-        ? 10000
+    activeWorkspace?.planName === 'Business' ||
+    activeWorkspace?.planName === 'Enterprise'
+      ? 10000
+      : activeWorkspace?.planName === 'Basic' ||
+          activeWorkspace?.planName === 'Growth'
+        ? 3000
         : 500;
   const usagePct = Math.min(100, Math.round((loggedMinutes / planMinutesLimit) * 100));
 
@@ -431,12 +434,15 @@ export function SettingsView() {
                   {activeWorkspace?.planName || 'Starter'} ({activeWorkspace?.subscriptionStatus || 'active'})
                 </h2>
                 <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  Subscription tier metadata is persisted in Firestore. Payment checkout is disabled until Milestone 3.
+                  Billing cycle: {activeWorkspace?.billingCycle || 'monthly'}. Manage or switch plans anytime from the pricing page.
                 </p>
               </div>
-              <span className="font-mono text-sm font-semibold text-neutral-900 tabular-nums dark:text-neutral-100">
-                $0 / month (Preview)
-              </span>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center rounded-lg bg-neutral-900 px-3.5 py-2 text-xs font-medium text-white transition-colors hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 whitespace-nowrap"
+              >
+                Change or upgrade plan
+              </Link>
             </div>
 
             <div className="mt-5 space-y-2 border-t border-neutral-200 pt-5 dark:border-neutral-800">
@@ -461,22 +467,22 @@ export function SettingsView() {
             {(
               [
                 {
-                  name: 'Starter',
-                  audience: 'For early-stage teams',
-                  price: '$49/mo',
-                  limits: ['Up to 3 voice agents', '500 call minutes/mo', '2 connected numbers'],
+                  name: 'Basic',
+                  audience: 'For startups & growing websites',
+                  price: '$150/mo',
+                  limits: ['Frontier AI models', '3,000 voice minutes/mo', 'Unlimited team seats'],
                 },
                 {
-                  name: 'Growth',
-                  audience: 'For scaling operations',
-                  price: '$199/mo',
-                  limits: ['Up to 15 voice agents', '3,000 call minutes/mo', 'CRM & Calendar sync'],
+                  name: 'Business',
+                  audience: 'For scaling customer operations',
+                  price: '$500/mo',
+                  limits: ['Advanced analytics', '10,000 voice minutes/mo', 'Ticket & macro sync'],
                 },
                 {
                   name: 'Enterprise',
                   audience: 'For multi-location orgs',
                   price: 'Custom',
-                  limits: ['Unlimited voice agents', 'Custom SIP trunking', 'Dedicated SLA & SSO'],
+                  limits: ['Unlimited scale & limits', 'SSO & HIPAA-eligible', 'Dedicated CSM & SLA'],
                 },
               ] as const
             ).map((tier) => {
@@ -507,23 +513,16 @@ export function SettingsView() {
                       ))}
                     </ul>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      pushToast({
-                        title: 'Stripe billing unlocks in Milestone 3',
-                        description:
-                          'Self-serve upgrades and card payments are not yet active.',
-                      })
-                    }
-                    className={`mt-5 w-full rounded-lg px-3.5 py-2 text-xs font-medium transition-colors ${
+                  <Link
+                    href="/pricing"
+                    className={`mt-5 block w-full rounded-lg px-3.5 py-2 text-center text-xs font-medium transition-colors ${
                       isCurrent
                         ? 'border border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200'
                         : 'bg-indigo-600 text-white hover:bg-indigo-700'
                     }`}
                   >
-                    {isCurrent ? 'Current Plan' : 'Preview Plan'}
-                  </button>
+                    {isCurrent ? 'Current Plan' : 'View on Pricing Page'}
+                  </Link>
                 </div>
               );
             })}

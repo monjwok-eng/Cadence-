@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Bot,
   CheckCircle2,
@@ -49,11 +50,10 @@ function StatusIndicator({ status }: { status: AgentStatus }) {
 }
 
 export function AgentsView() {
+  const router = useRouter();
   const {
     isReady,
     agents,
-    openCreateWizard,
-    openEditWizard,
     deleteAgent,
     toggleAgentStatus,
     pushToast,
@@ -131,14 +131,13 @@ export function AgentsView() {
             Create, train, customize, and embed website AI voice chatbots across your domains.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreateWizard}
+        <Link
+          href="/create-chatbot"
           className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 whitespace-nowrap shrink-0"
         >
           <Plus className="h-4 w-4" />
           Create Chatbot
-        </button>
+        </Link>
       </div>
 
       {/* Toolbar */}
@@ -220,7 +219,7 @@ export function AgentsView() {
           actionLabel={agents.length === 0 ? 'Create Chatbot' : 'Clear Filters'}
           onAction={() => {
             if (agents.length === 0) {
-              openCreateWizard();
+              router.push('/create-chatbot');
             } else {
               setSearchQuery('');
               setStatusFilter('All');
@@ -248,9 +247,12 @@ export function AgentsView() {
                     className="transition-colors hover:bg-neutral-50/70 dark:hover:bg-neutral-800/40"
                   >
                     <td className="px-4 py-3.5">
-                      <p className="font-medium text-neutral-900 dark:text-neutral-100">
+                      <Link
+                        href={`/agents/${agent.id}`}
+                        className="block font-medium text-neutral-900 hover:text-indigo-600 dark:text-neutral-100 dark:hover:text-indigo-400"
+                      >
                         {agent.name}
-                      </p>
+                      </Link>
                       <p className="mt-0.5 max-w-xs truncate text-xs text-neutral-500 dark:text-neutral-400">
                         {agent.businessName} · {agent.personality}
                       </p>
@@ -278,21 +280,20 @@ export function AgentsView() {
                     <td className="px-4 py-3.5 text-right">
                       <div className="inline-flex items-center justify-end gap-1">
                         <Link
-                          href="/embed"
+                          href={`/agents/${agent.id}?tab=embed`}
                           className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-indigo-600 transition-colors hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40 whitespace-nowrap"
                         >
                           <Code2 className="h-3.5 w-3.5" />
                           Embed
                         </Link>
-                        <button
-                          type="button"
-                          onClick={() => openEditWizard(agent)}
+                        <Link
+                          href={`/agents/${agent.id}?tab=settings`}
                           aria-label={`Edit ${agent.name}`}
                           className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 whitespace-nowrap"
                         >
                           <Pencil className="h-3.5 w-3.5" />
-                          Edit
-                        </button>
+                          Settings
+                        </Link>
                         <button
                           type="button"
                           disabled={busyId === agent.id}
@@ -321,9 +322,12 @@ export function AgentsView() {
               <div>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                    <Link
+                      href={`/agents/${agent.id}`}
+                      className="block truncate text-base font-semibold text-neutral-900 hover:text-indigo-600 dark:text-neutral-100 dark:hover:text-indigo-400"
+                    >
                       {agent.name}
-                    </h3>
+                    </Link>
                     <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                       {agent.businessName} · {agent.personality}
                     </p>
@@ -349,18 +353,17 @@ export function AgentsView() {
                   </span>
                   <div className="flex items-center gap-1.5">
                     <Link
-                      href="/embed"
+                      href={`/agents/${agent.id}?tab=embed`}
                       className="rounded-lg border border-indigo-200 bg-indigo-50/70 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300"
                     >
                       Embed
                     </Link>
-                    <button
-                      type="button"
-                      onClick={() => openEditWizard(agent)}
+                    <Link
+                      href={`/agents/${agent.id}`}
                       className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
                     >
-                      Edit
-                    </button>
+                      Workspace
+                    </Link>
                     <button
                       type="button"
                       disabled={busyId === agent.id}

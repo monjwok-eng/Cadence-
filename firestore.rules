@@ -78,15 +78,46 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/public_widgets/$(agentId)).data;
     }
 
+    function isValidStringList(arr, maxLen, maxItemLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || (arr[0] is string && arr[0].size() <= maxItemLen));
+    }
+
+    function isValidOnboardingData(data) {
+      return data is map
+        && data.keys().hasOnly(['referralSource', 'companySize', 'websiteUrl', 'otherSourceSummary', 'agentRole', 'instructions', 'techStack', 'deployChannels'])
+        && (!('referralSource' in data) || (data.referralSource is string && data.referralSource.size() <= 120))
+        && (!('companySize' in data) || (data.companySize is string && data.companySize.size() <= 80))
+        && (!('websiteUrl' in data) || (data.websiteUrl is string && data.websiteUrl.size() <= 500))
+        && (!('otherSourceSummary' in data) || (data.otherSourceSummary is string && data.otherSourceSummary.size() <= 2000))
+        && (!('agentRole' in data) || (data.agentRole is string && data.agentRole.size() <= 100))
+        && (!('instructions' in data) || (data.instructions is string && data.instructions.size() <= 2500))
+        && (!('techStack' in data) || isValidStringList(data.techStack, 25, 80))
+        && (!('deployChannels' in data) || isValidStringList(data.deployChannels, 25, 80));
+    }
+
+    function isValidEnterpriseContact(data) {
+      return data is map
+        && data.keys().hasOnly(['company', 'notes', 'requestedAt'])
+        && (!('company' in data) || (data.company is string && data.company.size() <= 120))
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000))
+        && (!('requestedAt' in data) || (data.requestedAt is string && data.requestedAt.size() <= 80));
+    }
+
     // --- Validation Blueprints ---
     function isValidUserProfile(data, userId) {
       return data.keys().hasAll(['id', 'fullName', 'email', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'fullName', 'email', 'avatarUrl', 'roleTitle', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'fullName', 'email', 'avatarUrl', 'roleTitle', 'onboardingCompleted', 'planSelected', 'selectedPlan', 'billingCycle', 'onboardingData', 'enterpriseContact', 'createdAt', 'updatedAt'])
         && data.id == userId
         && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120
         && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
         && (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 500))
         && (!('roleTitle' in data) || (data.roleTitle is string && data.roleTitle.size() <= 100))
+        && (!('onboardingCompleted' in data) || data.onboardingCompleted is bool)
+        && (!('planSelected' in data) || data.planSelected is bool)
+        && (!('selectedPlan' in data) || data.selectedPlan in ['Starter', 'Growth', 'Basic', 'Business', 'Enterprise'])
+        && (!('billingCycle' in data) || data.billingCycle in ['monthly', 'yearly'])
+        && (!('onboardingData' in data) || isValidOnboardingData(data.onboardingData))
+        && (!('enterpriseContact' in data) || isValidEnterpriseContact(data.enterpriseContact))
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -109,7 +140,7 @@ service cloud.firestore {
         && (!('industry' in data) || (data.industry is string && data.industry.size() <= 100))
         && (!('timezone' in data) || (data.timezone is string && data.timezone.size() <= 80))
         && isValidId(data.ownerId)
-        && data.planName in ['Starter', 'Growth', 'Enterprise']
+        && data.planName in ['Starter', 'Growth', 'Basic', 'Business', 'Enterprise']
         && data.subscriptionStatus in ['active', 'trialing', 'past_due', 'canceled']
         && isValidMemberList(data.memberUids)
         && data.ownerId in data.memberUids
@@ -258,7 +289,7 @@ service cloud.firestore {
         && data.workspaceId == workspaceId
         && isValidId(data.workspaceOwnerId)
         && isValidMemberList(data.memberUids)
-        && data.planName in ['Starter', 'Growth', 'Enterprise']
+        && data.planName in ['Starter', 'Growth', 'Basic', 'Business', 'Enterprise']
         && data.subscriptionStatus in ['active', 'trialing', 'past_due', 'canceled']
         && data.billingProvider is string && data.billingProvider.size() <= 60
         && data.currentPeriodStart is timestamp
@@ -359,7 +390,7 @@ service cloud.firestore {
         && incoming().updatedAt == request.time;
       allow update: if isVerified() && isValidId(userId) && request.auth.uid == userId
         && isValidUserProfile(incoming(), userId)
-        && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'email', 'roleTitle', 'avatarUrl', 'updatedAt'])
+        && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'email', 'roleTitle', 'avatarUrl', 'onboardingCompleted', 'planSelected', 'selectedPlan', 'billingCycle', 'onboardingData', 'enterpriseContact', 'updatedAt'])
         && incoming().id == existing().id
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time;
@@ -402,15 +433,24 @@ service cloud.firestore {
         && existsAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid));
       allow update: if isVerified() && isValidId(workspaceId)
         && isValidWorkspace(incoming(), workspaceId)
-        && isWorkspaceAdminOrOwner(workspaceId)
-        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'industry', 'timezone', 'updatedAt'])
         && incoming().id == existing().id
         && incoming().ownerId == existing().ownerId
-        && incoming().planName == existing().planName
-        && incoming().subscriptionStatus == existing().subscriptionStatus
         && incoming().memberUids == existing().memberUids
         && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time;
+        && incoming().updatedAt == request.time
+        && (
+          (
+            isWorkspaceAdminOrOwner(workspaceId)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'industry', 'timezone', 'updatedAt'])
+            && incoming().planName == existing().planName
+            && incoming().subscriptionStatus == existing().subscriptionStatus
+          ) || (
+            existing().ownerId == request.auth.uid
+            && incoming().diff(existing()).affectedKeys().hasOnly(['planName', 'subscriptionStatus', 'updatedAt'])
+            && incoming().name == existing().name
+            && incoming().subscriptionStatus in ['active', 'trialing']
+          )
+        );
       allow delete: if isVerified() && isValidId(workspaceId) && existing().ownerId == request.auth.uid;
 
       match /members/{memberId} {
@@ -565,7 +605,20 @@ service cloud.firestore {
           && isWorkspaceMember(workspaceId)
           && incoming().workspaceOwnerId == getWorkspace(workspaceId).ownerId
           && incoming().createdAt == request.time;
-        allow update, delete: if false;
+        allow update: if isVerified() && isValidId(workspaceId) && isValidId(subId)
+          && subId == workspaceId
+          && isValidSubscription(incoming(), workspaceId, subId)
+          && existing().workspaceOwnerId == request.auth.uid
+          && incoming().diff(existing()).affectedKeys().hasOnly(['planName', 'subscriptionStatus', 'billingProvider', 'currentPeriodStart', 'currentPeriodEnd'])
+          && incoming().id == existing().id
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().workspaceOwnerId == existing().workspaceOwnerId
+          && incoming().memberUids == existing().memberUids
+          && incoming().createdAt == existing().createdAt
+          && incoming().subscriptionStatus in ['active', 'trialing']
+          && incoming().currentPeriodStart == request.time
+          && incoming().currentPeriodEnd == request.time;
+        allow delete: if false;
       }
 
       match /phone_numbers/{phoneId} {

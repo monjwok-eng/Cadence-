@@ -1,8 +1,30 @@
 import type { Metadata } from 'next';
+import { DM_Sans, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/components/providers/app-provider';
 import { AppShell } from '@/components/layout/app-shell';
 import { ToastContainer } from '@/components/ui/toast-container';
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-display-face',
+  display: 'swap',
+});
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans-face',
+  display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-mono-face',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Cadence — AI Voice Agent Platform',
@@ -28,9 +50,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${plusJakartaSans.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
       <body
-        className="min-h-screen bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100"
+        className="min-h-screen bg-white font-sans text-neutral-900 antialiased"
         suppressHydrationWarning
       >
         <AppProvider>

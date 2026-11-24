@@ -37,8 +37,16 @@ function BrandMark({ className = 'h-7 w-8' }: { className?: string }) {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { authReady, firebaseUser, signInWithGoogle, signInWithEmail, pushToast } =
-    useApp();
+  const {
+    authReady,
+    isReady,
+    firebaseUser,
+    isEmailVerified,
+    user,
+    signInWithGoogle,
+    signInWithEmail,
+    pushToast,
+  } = useApp();
 
   const nextParam = searchParams.get('next');
   const safeRedirect =
@@ -60,10 +68,21 @@ function LoginForm() {
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   useEffect(() => {
-    if (authReady && firebaseUser) {
+    if (!authReady || !firebaseUser) return;
+    if (!isEmailVerified) {
       router.replace(safeRedirect);
+      return;
     }
-  }, [authReady, firebaseUser, safeRedirect, router]);
+    if (isReady && user) {
+      if (!user.onboardingCompleted) {
+        router.replace('/onboarding');
+      } else if (!user.planSelected) {
+        router.replace('/pricing');
+      } else {
+        router.replace(safeRedirect);
+      }
+    }
+  }, [authReady, isReady, firebaseUser, isEmailVerified, user, safeRedirect, router]);
 
   const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +105,6 @@ function LoginForm() {
       .then(() => {
         setSuccessMsg('Signed in. Loading your workspace...');
         pushToast({ title: 'Welcome back', variant: 'success' });
-        router.push(safeRedirect);
       })
       .catch((err) => {
         setErrors({
@@ -104,12 +122,10 @@ function LoginForm() {
       await signInWithGoogle();
       setSuccessMsg('Signed in with Google. Redirecting...');
       pushToast({ title: 'Signed in', variant: 'success' });
-      router.push(safeRedirect);
     } catch (err) {
       setErrors({
         form: err instanceof Error ? err.message : 'Google sign-in failed.',
       });
-    } finally {
       setGoogleSubmitting(false);
     }
   };
@@ -278,6 +294,16 @@ function LoginForm() {
           <Chrome className="h-[18px] w-[18px] shrink-0 text-[#1c1714]" />
           <span>{googleSubmitting ? 'Connecting...' : 'Continue with Google'}</span>
         </button>
+
+        <p className="mt-6 text-center text-[13.5px] text-[#4a4540]">
+          Don&apos;t have an account?{' '}
+          <Link
+            href="/signup"
+            className="font-medium text-[#1c1714] underline underline-offset-4 hover:opacity-75"
+          >
+            Sign up
+          </Link>
+        </p>
       </div>
     </div>
   );

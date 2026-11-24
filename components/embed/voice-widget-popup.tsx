@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Mic,
   MicOff,
-  Maximize2,
   Phone,
   PhoneOff,
   Send,
@@ -504,13 +503,18 @@ export function VoiceWidgetPopup({
           <div className="w-9" />
         )}
 
-        {/* Centered Language Pill */}
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200/90 bg-white px-3.5 py-1.5 text-xs font-medium text-neutral-800 shadow-xs">
-          <span role="img" aria-label="Language flag" className="text-sm">
-            🇺🇸
+        {/* Centered Chatbot Title / Language */}
+        <div className="inline-flex max-w-[190px] items-center gap-1.5 rounded-full border border-neutral-200/90 bg-white px-3.5 py-1.5 text-xs font-medium text-neutral-800 shadow-xs">
+          <span className="truncate font-display font-semibold text-neutral-900">
+            {widget.name}
           </span>
-          <span>English</span>
-          <ChevronDown className="h-3 w-3 text-neutral-400" />
+          <span className="text-neutral-300" aria-hidden="true">
+            ·
+          </span>
+          <span className="shrink-0 text-neutral-500">
+            {widget.language || 'English'}
+          </span>
+          <ChevronDown className="h-3 w-3 shrink-0 text-neutral-400" />
         </div>
 
         {/* Right Action: Minimize / Close button */}
@@ -532,10 +536,10 @@ export function VoiceWidgetPopup({
           <button
             type="button"
             onClick={handleCloseClick}
-            aria-label="Minimize widget"
+            aria-label="Close chatbot"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition-colors hover:bg-neutral-200"
           >
-            <Maximize2 className="h-4 w-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>

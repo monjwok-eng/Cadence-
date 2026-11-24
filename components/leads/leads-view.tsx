@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Download,
   Mail,
@@ -19,6 +20,7 @@ import { Lead, LeadStatus } from '@/lib/types';
 const STATUS_TABS: ('All' | LeadStatus)[] = ['All', 'New', 'Contacted', 'Qualified'];
 
 export function LeadsView() {
+  const router = useRouter();
   const {
     isReady,
     leads,
@@ -26,7 +28,6 @@ export function LeadsView() {
     addLead,
     updateLeadStatus,
     deleteLead,
-    openCreateWizard,
     pushToast,
   } = useApp();
 
@@ -198,7 +199,7 @@ export function LeadsView() {
             type="button"
             onClick={() => {
               if (agents.length === 0) {
-                openCreateWizard();
+                router.push('/create-chatbot');
                 return;
               }
               setAgentId(agents[0]?.id || '');
@@ -294,7 +295,7 @@ export function LeadsView() {
             leads.length === 0
               ? () => {
                   if (agents.length === 0) {
-                    openCreateWizard();
+                    router.push('/create-chatbot');
                   } else {
                     setAgentId(agents[0].id);
                     setModalOpen(true);

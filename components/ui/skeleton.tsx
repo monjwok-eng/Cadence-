@@ -5,7 +5,7 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'animate-pulse rounded-md bg-neutral-200/70 dark:bg-neutral-800',
+        'animate-pulse rounded-md bg-neutral-200/75',
         className
       )}
     />
@@ -14,11 +14,11 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function TableSkeleton({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
+    <div className="rounded-xl border border-neutral-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="border-b border-neutral-200/80 px-4 py-3">
         <Skeleton className="h-4 w-48" />
       </div>
-      <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+      <div className="divide-y divide-neutral-200/80">
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="flex items-center justify-between gap-4 px-4 py-3.5">
             <div className="flex items-center gap-3">

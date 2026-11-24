@@ -21,12 +21,15 @@ import {
   AgentPersonality,
   AgentStatus,
   ApiKeyItem,
+  BillingCycle,
   CallRecord,
   KnowledgeSource,
   Lead,
   LeadStatus,
+  OnboardingData,
   PhoneCountryCode,
   PhoneNumberItem,
+  PlanTier,
   TeamMember,
   UserProfile,
   VoiceAgent,
@@ -96,6 +99,13 @@ export async function ensureUserOnboarding(
         avatarUrl: d.avatarUrl || '',
         roleTitle: d.roleTitle || 'Workspace Owner',
         initials: makeInitials(d.fullName || 'User'),
+        onboardingCompleted:
+          typeof d.onboardingCompleted === 'boolean' ? d.onboardingCompleted : true,
+        planSelected:
+          typeof d.planSelected === 'boolean' ? d.planSelected : true,
+        selectedPlan: d.selectedPlan as PlanTier | undefined,
+        billingCycle: d.billingCycle as BillingCycle | undefined,
+        onboardingData: d.onboardingData as OnboardingData | undefined,
       };
     }
   } catch (error) {
@@ -135,6 +145,8 @@ export async function ensureUserOnboarding(
       fullName: displayName,
       email,
       roleTitle: 'Workspace Owner',
+      onboardingCompleted: false,
+      planSelected: false,
       createdAt: now,
       updatedAt: now,
     };
@@ -149,6 +161,8 @@ export async function ensureUserOnboarding(
       avatarUrl: firebaseUser.photoURL || '',
       roleTitle: 'Workspace Owner',
       initials: makeInitials(displayName),
+      onboardingCompleted: false,
+      planSelected: false,
     };
   }
 
@@ -800,6 +814,97 @@ export async function updateUserProfileInDb(
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function saveOnboardingInDb(
+  uid: string,
+  data: OnboardingData,
+  completed: boolean
+): Promise<OnboardingData> {
+  const cleanData: OnboardingData = {
+    referralSource: sanitizeText(data.referralSource || '', 120),
+    companySize: sanitizeText(data.companySize || '', 80),
+    websiteUrl: sanitizeText(data.websiteUrl || '', 500),
+    otherSourceSummary: sanitizeText(data.otherSourceSummary || '', 2000),
+    agentRole: sanitizeText(data.agentRole || '', 100),
+    instructions: sanitizeText(data.instructions || '', 2500),
+    techStack: Array.isArray(data.techStack)
+      ? data.techStack.map((t) => sanitizeText(t, 80)).filter(Boolean).slice(0, 25)
+      : [],
+    deployChannels: Array.isArray(data.deployChannels)
+      ? data.deployChannels.map((c) => sanitizeText(c, 80)).filter(Boolean).slice(0, 25)
+      : [],
+  };
+
+  const path = `users/${uid}`;
+  try {
+    await updateDoc(doc(db, path), {
+      onboardingData: cleanData,
+      onboardingCompleted: Boolean(completed),
+      updatedAt: serverTimestamp(),
+    });
+    return cleanData;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function selectPlanInDb(
+  uid: string,
+  workspace: Workspace | null,
+  input: {
+    planName: PlanTier;
+    billingCycle: BillingCycle;
+    subscriptionStatus: 'active' | 'trialing';
+    billingProvider: string;
+    enterpriseContact?: { company?: string; notes?: string };
+  }
+) {
+  const batch = writeBatch(db);
+  const now = serverTimestamp();
+
+  const userUpdates: Record<string, unknown> = {
+    planSelected: true,
+    selectedPlan: input.planName,
+    billingCycle: input.billingCycle,
+    updatedAt: now,
+  };
+
+  if (input.enterpriseContact) {
+    userUpdates.enterpriseContact = {
+      company: sanitizeText(input.enterpriseContact.company || '', 120),
+      notes: sanitizeText(input.enterpriseContact.notes || '', 1000),
+      requestedAt: new Date().toISOString().slice(0, 80),
+    };
+  }
+
+  batch.update(doc(db, 'users', uid), userUpdates);
+
+  if (workspace && workspace.ownerId === uid) {
+    batch.update(doc(db, 'workspaces', workspace.id), {
+      planName: input.planName,
+      subscriptionStatus: input.subscriptionStatus,
+      updatedAt: now,
+    });
+
+    const subRef = doc(db, 'workspaces', workspace.id, 'subscriptions', workspace.id);
+    const subSnap = await getDoc(subRef);
+    if (subSnap.exists()) {
+      batch.update(subRef, {
+        planName: input.planName,
+        subscriptionStatus: input.subscriptionStatus,
+        billingProvider: sanitizeText(input.billingProvider, 60),
+        currentPeriodStart: now,
+        currentPeriodEnd: now,
+      });
+    }
+  }
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
   }
 }
 

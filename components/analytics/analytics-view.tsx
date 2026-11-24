@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BarChart3 } from 'lucide-react';
 import { useApp } from '@/components/providers/app-provider';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -17,7 +18,8 @@ function formatDuration(sec: number) {
 }
 
 export function AnalyticsView() {
-  const { isReady, agents, calls, leads, activeWorkspace, openCreateWizard } = useApp();
+  const router = useRouter();
+  const { isReady, agents, calls, leads, activeWorkspace } = useApp();
   const [range, setRange] = useState<RangeKey>('7d');
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
 
@@ -182,7 +184,7 @@ export function AnalyticsView() {
               title="No conversation telemetry to chart yet"
               description="Metrics remain at 0 until visitors or team tests run voice conversations. Create a voice chatbot and add your website URL to prepare."
               actionLabel={agents.length === 0 ? 'Create Chatbot' : undefined}
-              onAction={agents.length === 0 ? openCreateWizard : undefined}
+              onAction={agents.length === 0 ? () => router.push('/create-chatbot') : undefined}
             />
           </div>
         ) : (

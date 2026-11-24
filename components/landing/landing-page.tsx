@@ -337,7 +337,7 @@ export function LandingPage() {
             </a>
           </nav>
 
-          <div className="flex items-center gap-5 shrink-0">
+          <div className="flex items-center gap-4 shrink-0">
             <Link
               href="/login"
               className={`text-[15px] font-light transition-colors whitespace-nowrap shrink-0 ${
@@ -347,6 +347,17 @@ export function LandingPage() {
               }`}
             >
               Login
+            </Link>
+
+            <Link
+              href="/signup"
+              className={`hidden sm:inline-flex items-center justify-center rounded-[6px] px-3.5 py-1.5 text-[14px] font-normal transition-colors whitespace-nowrap shrink-0 ${
+                isScrolled
+                  ? 'bg-[#14110f] text-white hover:bg-[#2d2622]'
+                  : 'bg-white/15 text-white backdrop-blur-xs hover:bg-white/25'
+              }`}
+            >
+              Sign up
             </Link>
 
             <button
@@ -566,6 +577,13 @@ export function LandingPage() {
                       Login
                     </Link>
                     <Link
+                      href="/signup"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="hover:text-[#14110f]"
+                    >
+                      Sign up
+                    </Link>
+                    <Link
                       href="/forgot-password"
                       onClick={() => setMobileMenuOpen(false)}
                       className="hover:text-[#14110f]"
@@ -580,7 +598,7 @@ export function LandingPage() {
 
           <div className="mt-auto px-5 pb-6 pt-4 sm:px-8">
             <Link
-              href="/login"
+              href="/signup"
               onClick={() => setMobileMenuOpen(false)}
               className="block w-full rounded-[6px] bg-[#f3f1ed] py-4 text-center text-[15px] font-medium text-[#14110f] transition-colors hover:bg-[#e8e4dd]"
             >
@@ -622,7 +640,7 @@ export function LandingPage() {
 
             <div className="mt-7">
               <Link
-                href="/login"
+                href="/signup"
                 className="inline-flex items-center justify-center rounded-[6px] bg-[#f94c1f] px-5 py-3 text-[15px] font-normal text-white transition-colors hover:bg-[#e13f15] whitespace-nowrap"
               >
                 Create your voice chatbot
@@ -888,13 +906,13 @@ export function LandingPage() {
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Link
-                href="/login"
+                href="/signup"
                 className="inline-flex items-center justify-center rounded-[5px] bg-white px-5 py-3 text-[14.5px] font-normal text-[#14110f] transition-colors hover:bg-neutral-100 whitespace-nowrap"
               >
                 Build your chatbot
               </Link>
               <Link
-                href="/login"
+                href="/signup"
                 className="inline-flex items-center justify-center rounded-[5px] border border-white/65 bg-transparent px-5 py-3 text-[14.5px] font-normal text-white transition-colors hover:bg-white/10 whitespace-nowrap"
               >
                 Open Cadence Studio
@@ -977,14 +995,14 @@ export function LandingPage() {
                 </div>
 
                 <Link
-                  href="/login"
+                  href="/signup"
                   className={`mt-10 block w-full rounded-[6px] px-5 py-3 text-center text-sm font-normal transition-colors whitespace-nowrap ${
                     tier.featured
                       ? 'bg-[#f94c1f] text-white hover:bg-[#e13f15]'
                       : 'border border-[#dcd7ce] bg-white text-[#14110f] hover:bg-[#faf8f5]'
                   }`}
                 >
-                  Start with Starter
+                  Get started with {tier.name}
                 </Link>
               </div>
             ))}

@@ -108,13 +108,27 @@ export interface CallRecord {
 
 export type WorkspaceRole = 'owner' | 'admin' | 'member';
 
+export type PlanTier = 'Starter' | 'Growth' | 'Basic' | 'Business' | 'Enterprise';
+export type BillingCycle = 'monthly' | 'yearly';
+
+export interface OnboardingData {
+  referralSource?: string;
+  companySize?: string;
+  websiteUrl?: string;
+  otherSourceSummary?: string;
+  agentRole?: string;
+  instructions?: string;
+  techStack?: string[];
+  deployChannels?: string[];
+}
+
 export interface Workspace {
   id: string;
   name: string;
   industry: string;
   timezone: string;
   ownerId: string;
-  planName: 'Starter' | 'Growth' | 'Enterprise';
+  planName: PlanTier;
   subscriptionStatus: 'active' | 'trialing' | 'past_due' | 'canceled';
   memberUids: string[];
   role?: WorkspaceRole;
@@ -127,6 +141,11 @@ export interface UserProfile {
   avatarUrl?: string;
   roleTitle: string;
   initials: string;
+  onboardingCompleted: boolean;
+  planSelected: boolean;
+  selectedPlan?: PlanTier;
+  billingCycle?: BillingCycle;
+  onboardingData?: OnboardingData;
 }
 
 export interface TeamMember {

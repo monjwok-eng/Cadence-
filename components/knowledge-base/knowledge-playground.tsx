@@ -4,9 +4,11 @@ import React, { useState } from 'react';
 import { Bot, CheckCircle2, FileText, MessageSquare, Send, Sparkles } from 'lucide-react';
 import { useApp } from '@/components/providers/app-provider';
 
-export function KnowledgePlayground() {
+export function KnowledgePlayground({ scopedAgentId }: { scopedAgentId?: string } = {}) {
   const { agents, knowledgeSources, activeWorkspace, pushToast } = useApp();
-  const [selectedAgentId, setSelectedAgentId] = useState<string>(agents[0]?.id || '');
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(
+    scopedAgentId || agents[0]?.id || ''
+  );
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
