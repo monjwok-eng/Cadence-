@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { MotionConfig, motion } from 'motion/react';
 import {
   ArrowRight,
   Check,
@@ -16,17 +17,11 @@ import {
   X,
 } from 'lucide-react';
 import heroImg from '@/src/assets/images/hero_parloa_landscape_1795166054480.jpg';
-import testimonialCyclistImg from '@/src/assets/images/testimonial_golden_cyclist_1795171532393.jpg';
-import testimonialHorizonImg from '@/src/assets/images/testimonial_golden_horizon_1795171532435.jpg';
-import testimonialEnergyImg from '@/src/assets/images/testimonial_energy_turbine_1795600845415.jpg';
-import testimonialHomeImg from '@/src/assets/images/testimonial_insurance_home_1795600845394.jpg';
-import testimonialDuskImg from '@/src/assets/images/testimonial_insurance_dusk_1795600847557.jpg';
-import testimonialAutoImg from '@/src/assets/images/testimonial_retail_auto_1795600847488.jpg';
-import testimonialBankingImg from '@/src/assets/images/testimonial_banking_portrait_1795600847751.jpg';
-import testimonialBalconyImg from '@/src/assets/images/testimonial_balcony_sunset_1795600847506.jpg';
 import { useApp } from '@/components/providers/app-provider';
-import { BrandLoader } from '@/components/ui/brand-loader';
 import { CookieConsentBanner } from '@/components/ui/cookie-consent-banner';
+
+const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
+const REVEAL_VIEWPORT = { once: true, amount: 0.15 } as const;
 
 const BUILDER_PROMPTS = [
   'Train a voice chatbot on https://acme-saas.com and our pricing PDF so visitors can ask questions aloud',
@@ -37,67 +32,75 @@ const BUILDER_PROMPTS = [
 const TESTIMONIALS = [
   {
     quote:
-      '“This collaboration allowed us to push the boundaries of what’s possible with conversational AI.”',
+      '"This collaboration allowed us to push the boundaries of what’s possible with conversational AI."',
     author: 'Daniel Aslet, Director of Applied AI Strategy, Transformation, and Training',
     company: 'Waterfield Tech',
-    image: testimonialCyclistImg,
+    image:
+      'https://a.storyblok.com/f/330303/626x800/983b39c321/testimonial-retail.jpg/m/626x0/filters:quality(80):format(webp)',
     alt: 'Woman outdoors in the sunlight',
   },
   {
     quote:
-      '“With Cadence, we’re creating new opportunities for projects. It’s a real win for our team and the city.”',
+      '"With Parloa, we’re creating new opportunities for projects. It\'s a real win for our team and the city."',
     author: 'Thorsten Gerbitz, Department Head',
     company: 'MEG',
-    image: testimonialEnergyImg,
-    alt: 'Wind turbine in a golden-hour landscape',
+    image:
+      'https://a.storyblok.com/f/330303/626x800/9f675e471a/testimonial-energy.jpg/m/626x0/filters:quality(80):format(webp)',
+    alt: 'Wind turbine in a landscape',
   },
   {
     quote:
-      '“At Münchener Verein, insurance has always been personal. Now AI helps us serve customers even more efficiently.”',
+      '"At Münchener Verein, insurance has always been personal. Now AI helps us serve customers even more efficiently."',
     author: 'Rainer Breitmoser, Chief Customer Officer',
     company: 'Münchener Verein Insurance Group',
-    image: testimonialHomeImg,
-    alt: 'House in a sunlit rural landscape',
+    image:
+      'https://a.storyblok.com/f/330303/626x800/058a56f9a1/testimonial-insurance.jpg/m/626x0/filters:quality(80):format(webp)',
+    alt: 'House in a rural landscape',
   },
   {
     quote:
-      '“Our customers expect us to be available to them at any time of the day or night to competently record their claims. With Cadence, we can meet those standards.”',
+      '"Our customers expect us to be available to them at any time of the day or night to competently record their claims. With Parloa, we can meet those standards."',
     author: 'Uwe Schumacher, Chairman of the Board',
     company: 'DOMCURA AG',
-    image: testimonialDuskImg,
-    alt: 'Warm glowing architectural windows at dusk',
+    image:
+      'https://a.storyblok.com/f/330303/626x800/67583718f3/testimonial-insurance2.jpg/m/626x0/filters:quality(80):format(webp)',
+    alt: 'DOMCURA AG customer testimonial',
   },
   {
     quote:
-      '“Thanks to Cadence’s AI agents, we’re available to customers at all times.”',
+      '"Thanks to Parloa’s AI agents, we’re available to customers at all times."',
     author: 'Alexander App, Director of Customer Service Europe',
     company: 'AUTO1 Group',
-    image: testimonialAutoImg,
-    alt: 'Sunlit modern automotive showroom facade',
+    image:
+      'https://a.storyblok.com/f/330303/626x800/93c84f0a52/testimonial-retail2.jpg/m/626x0/filters:quality(80):format(webp)',
+    alt: 'AUTO1 Group customer testimonial',
   },
   {
     quote:
-      '“With the Cadence platform’s low-code front-end, it is no longer necessary to involve Swiss Life’s IT department.”',
+      '"With the Parloa platform’s low-code front-end, it is no longer necessary to involve Swiss Life’s IT department."',
     author: 'Tom Schneider, Process and Project Management Officer',
     company: 'Swiss Life Germany',
-    image: testimonialBankingImg,
-    alt: 'Executive in a suit standing by tall sunlit windows',
+    image:
+      'https://a.storyblok.com/f/330303/626x800/579bda0e20/testimonial-banking.jpg/m/626x0/filters:quality(80):format(webp)',
+    alt: 'Man in a suit, lost in thought',
   },
   {
     quote:
-      '“From the very first day, the AI agent not only achieved the goals we had set, but exceeded them.”',
+      '"From the very first day, the AI agent not only achieved the goals we had set, but exceeded them."',
     author: 'Johanna Drachenberg, Reader Market & Marketing Lead',
     company: 'WESER-KURIER Mediengruppe',
-    image: testimonialHorizonImg,
-    alt: 'Horizon skyline at golden sunset',
+    image:
+      'https://a.storyblok.com/f/330303/626x800/faab39fa0b/testimonial-banking02.jpg/m/626x0/filters:quality(80):format(webp)',
+    alt: 'City skyline at sunset',
   },
   {
     quote:
-      '“By deploying Cadence, we are sending a clear signal: We want to rethink service. We are proud to be among the pioneers in the industry.”',
+      '"By deploying Parloa, we are sending a clear signal: We want to rethink service. We are proud to be among the pioneers in the industry."',
     author: 'Patrik Pietryga, Head of After-Sales',
     company: 'Nord-Ostsee Automobile',
-    image: testimonialBalconyImg,
-    alt: 'Person seated on a stone terrace at sunset',
+    image:
+      'https://a.storyblok.com/f/330303/626x800/9d3ffe7ca1/testimonial-consumer-goods.jpg/m/626x0/filters:quality(80):format(webp)',
+    alt: 'Man sitting on a balcony at sunset',
   },
 ];
 
@@ -259,8 +262,6 @@ export function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedMenuItem, setExpandedMenuItem] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [navVisible, setNavVisible] = useState(true);
-  const lastScrollYRef = useRef(0);
   const trustTrackRef = useRef<HTMLDivElement | null>(null);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(true);
@@ -291,7 +292,7 @@ export function LandingPage() {
     if (!el) return;
     const firstCard = el.querySelector('article');
     const stepWidth = firstCard
-      ? firstCard.getBoundingClientRect().width + 24
+      ? firstCard.getBoundingClientRect().width + 16
       : Math.max(320, el.clientWidth * 0.75);
     el.scrollBy({
       left: direction === 'next' ? stepWidth : -stepWidth,
@@ -306,29 +307,29 @@ export function LandingPage() {
   }, [authReady, firebaseUser, router]);
 
   useEffect(() => {
-    lastScrollYRef.current = window.scrollY;
-    const handleScroll = () => {
+    let rafId = 0;
+
+    const updateScrolledState = () => {
+      rafId = 0;
       const currentY = Math.max(0, window.scrollY);
-      setIsScrolled(currentY > 36);
-
-      if (currentY <= 36) {
-        setNavVisible(true);
-        lastScrollYRef.current = currentY;
-        return;
-      }
-
-      const delta = currentY - lastScrollYRef.current;
-      if (delta > 6 && currentY > 72) {
-        setNavVisible(false);
-        lastScrollYRef.current = currentY;
-      } else if (delta < -6) {
-        setNavVisible(true);
-        lastScrollYRef.current = currentY;
-      }
+      setIsScrolled((prev) => {
+        if (currentY > 56) return true;
+        if (currentY < 24) return false;
+        return prev;
+      });
     };
-    handleScroll();
+
+    const handleScroll = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(updateScrolledState);
+    };
+
+    updateScrolledState();
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId) window.cancelAnimationFrame(rafId);
+    };
   }, []);
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
@@ -345,20 +346,15 @@ export function LandingPage() {
     setNewsletterSubscribed(true);
   };
 
-  if (!authReady || firebaseUser) {
-    return <BrandLoader />;
-  }
-
   return (
+    <MotionConfig reducedMotion="user">
     <div className="min-h-screen bg-white text-[#14110f] antialiased">
-      {/* Header — Transparent over hero, hides on scroll down, returns white on scroll up */}
+      {/* Header — Fixed and stable: transparent over hero, solid white on scroll */}
       <header
-        className={`fixed inset-x-0 top-0 z-40 transition-[transform,background-color,color,border-color] duration-200 ease-out ${
-          navVisible || mobileMenuOpen ? 'translate-y-0' : '-translate-y-full'
-        } ${
+        className={`fixed inset-x-0 top-0 z-40 border-b transition-colors duration-200 ease-out ${
           isScrolled
-            ? 'bg-white text-[#14110f] border-b border-[#f0eee9]'
-            : 'bg-transparent text-white'
+            ? 'border-[#f0eee9] bg-white text-[#14110f]'
+            : 'border-transparent bg-transparent text-white'
         }`}
       >
         <div className="mx-auto flex h-[70px] max-w-7xl items-center justify-between gap-8 px-5 sm:px-8 lg:px-12">
@@ -438,10 +434,10 @@ export function LandingPage() {
 
             <Link
               href="/signup"
-              className={`hidden sm:inline-flex items-center justify-center rounded-[6px] px-3.5 py-1.5 text-[14px] font-normal transition-colors whitespace-nowrap shrink-0 ${
+              className={`hidden sm:inline-flex items-center justify-center rounded-[6px] px-3.5 py-1.5 text-[14px] font-normal transition-colors duration-200 whitespace-nowrap shrink-0 ${
                 isScrolled
                   ? 'bg-[#14110f] text-white hover:bg-[#2d2622]'
-                  : 'bg-white/15 text-white backdrop-blur-xs hover:bg-white/25'
+                  : 'bg-white/15 text-white hover:bg-white/25'
               }`}
             >
               Sign up
@@ -714,7 +710,12 @@ export function LandingPage() {
         </div>
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pb-12 pt-28 sm:px-8 sm:pb-16 lg:px-12 lg:pb-20">
-          <div className="max-w-[350px] sm:max-w-[540px] lg:max-w-[700px]">
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, ease: REVEAL_EASE }}
+            className="max-w-[350px] sm:max-w-[540px] lg:max-w-[700px]"
+          >
             <h1
               className="font-serif font-normal tracking-[-0.03em] text-white"
               style={{
@@ -733,14 +734,20 @@ export function LandingPage() {
                 Create your voice chatbot
               </Link>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Monochrome Enterprise Brand Logos — Clean white editorial transition */}
       <section aria-label="Enterprise brands" className="bg-white py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-          <div className="grid grid-cols-3 items-center justify-items-center gap-x-6 gap-y-7 md:grid-cols-6">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.25 }}
+            transition={{ duration: 0.55, ease: REVEAL_EASE }}
+            className="grid grid-cols-3 items-center justify-items-center gap-x-6 gap-y-7 md:grid-cols-6"
+          >
             {/* Booking.com */}
             <div
               aria-label="Booking.com"
@@ -807,14 +814,20 @@ export function LandingPage() {
                 <span className="h-[8px] w-[1.5px] bg-[#524d47]" />
               </span>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* The Difference — White editorial showcase matching Parloa pillars */}
       <section id="difference" className="bg-white pb-20 pt-8 sm:pb-28 sm:pt-12">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-          <div className="max-w-3xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={REVEAL_VIEWPORT}
+            transition={{ duration: 0.6, ease: REVEAL_EASE }}
+            className="max-w-3xl"
+          >
             <p className="font-mono text-[13.5px] font-normal tracking-[0.02em] text-[#1c1714]">
               The Difference
             </p>
@@ -828,11 +841,16 @@ export function LandingPage() {
             >
               Turn your website URL into a live voice chatbot.
             </h2>
-          </div>
+          </motion.div>
 
           <div className="mt-12 grid grid-cols-1 gap-14 lg:grid-cols-3 lg:gap-8">
             {/* Pillar 1 — Orange gradient card with floating Chatbot Builder composer */}
-            <div>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={REVEAL_VIEWPORT}
+              transition={{ duration: 0.6, delay: 0, ease: REVEAL_EASE }}
+            >
               <div className="flex aspect-[1/1.02] items-center justify-center rounded-[8px] bg-[linear-gradient(145deg,#e93c11_0%,#f56a1b_48%,#f2a738_100%)] p-6 sm:p-8">
                 <div className="w-[90%] max-w-[300px] rounded-[8px] bg-white p-4 shadow-[0_18px_48px_rgba(120,30,0,0.2)]">
                   <div className="flex items-center gap-2.5 text-[12px] font-normal text-[#1c1714]">
@@ -866,10 +884,15 @@ export function LandingPage() {
               <p className="mt-2.5 text-[15px] font-light leading-[1.55] text-[#4a4540]">
                 Enter your website URL, upload PDFs, DOCX, or FAQs, and choose a voice personality and greeting in a guided 4-step studio.
               </p>
-            </div>
+            </motion.div>
 
             {/* Pillar 2 — Misty slate-blue glass gradient with Knowledge Sync progress */}
-            <div>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={REVEAL_VIEWPORT}
+              transition={{ duration: 0.6, delay: 0.09, ease: REVEAL_EASE }}
+            >
               <div className="flex aspect-[1/1.02] flex-col items-center justify-center rounded-[8px] bg-[radial-gradient(circle_at_25%_75%,#cfd6df_0%,#93a0ae_48%,#646b7d_100%)] p-6 sm:p-8">
                 <div className="flex items-center gap-2 text-[12.5px] font-light text-white/95 tabular-nums">
                   <CheckCircle2 className="h-4 w-4 stroke-[1.35] text-white/80" />
@@ -885,10 +908,15 @@ export function LandingPage() {
               <p className="mt-2.5 text-[15px] font-light leading-[1.55] text-[#4a4540]">
                 Style your voice widget’s accent color, theme, and position, speak with it in the test playground, and publish with Powered by Cadence branding.
               </p>
-            </div>
+            </motion.div>
 
             {/* Pillar 3 — Deep obsidian-plum gradient with glowing pale-ice orb */}
-            <div>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={REVEAL_VIEWPORT}
+              transition={{ duration: 0.6, delay: 0.18, ease: REVEAL_EASE }}
+            >
               <div className="relative flex aspect-[1/1.02] flex-col items-center justify-center overflow-hidden rounded-[8px] bg-[radial-gradient(circle_at_75%_25%,#4e4254_0%,#24212e_52%,#111116_100%)] p-6 sm:p-8">
                 <div className="absolute right-5 top-5 text-right text-[11px] font-normal leading-tight text-white/45">
                   <p>1-Line Embed &amp;</p>
@@ -902,15 +930,21 @@ export function LandingPage() {
               <p className="mt-2.5 text-[15px] font-light leading-[1.55] text-[#4a4540]">
                 Copy one script snippet onto WordPress, Shopify, React, or HTML, enforce allowed domains, and review every transcript and captured lead.
               </p>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Trusted by Leading Brands — Editorial horizontal card slider with Gartner/G2 ratings & controls */}
+      {/* Trusted by Leading Brands */}
       <section id="trusted" className="bg-white pb-20 pt-2 sm:pb-28 overflow-x-clip">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={REVEAL_VIEWPORT}
+            transition={{ duration: 0.6, ease: REVEAL_EASE }}
+            className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between"
+          >
             <div className="max-w-3xl">
               <h2
                 className="font-serif font-normal tracking-[-0.03em] text-[#14110f]"
@@ -923,29 +957,25 @@ export function LandingPage() {
                 Trusted by leading brands.
               </h2>
 
-              <div className="mt-6 flex flex-wrap items-center gap-y-2 text-[14.5px] text-[#14110f] tabular-nums">
+              <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-2 text-[14.5px] text-[#14110f] tabular-nums">
                 <p className="flex items-center gap-2.5">
-                  <span className="font-light text-[#2b2623]">Gartner Peer Insights</span>
+                  <span className="font-light text-[#6b655f]">Gartner Peer Insights</span>
                   <span className="font-normal text-[#14110f]">4.5/5</span>
                 </p>
-                <span
-                  className="mx-5 h-4 w-px bg-[#dcd7ce]"
-                  aria-hidden="true"
-                />
                 <p className="flex items-center gap-2.5">
-                  <span className="font-light text-[#2b2623]">G2</span>
+                  <span className="font-light text-[#6b655f]">G2</span>
                   <span className="font-normal text-[#14110f]">4.5/5</span>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => handleScrollTrustSlider('prev')}
                 disabled={!canScrollPrev}
                 aria-label="Previous"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e2ded7] bg-white text-[#14110f] transition-colors hover:border-[#14110f] disabled:pointer-events-none disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14110f]"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-[4px] border border-[#e5e2dc] bg-white text-[#14110f] transition-colors hover:border-[#14110f] disabled:pointer-events-none disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14110f]"
               >
                 <ChevronLeft className="h-4 w-4 stroke-[1.5]" />
               </button>
@@ -954,36 +984,43 @@ export function LandingPage() {
                 onClick={() => handleScrollTrustSlider('next')}
                 disabled={!canScrollNext}
                 aria-label="Next"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e2ded7] bg-white text-[#14110f] transition-colors hover:border-[#14110f] disabled:pointer-events-none disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14110f]"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-[4px] border border-[#e5e2dc] bg-white text-[#14110f] transition-colors hover:border-[#14110f] disabled:pointer-events-none disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14110f]"
               >
                 <ChevronRight className="h-4 w-4 stroke-[1.5]" />
               </button>
             </div>
-          </div>
+          </motion.div>
 
-          <div
+          <motion.div
             ref={trustTrackRef}
             onScroll={syncTrustSliderButtons}
-            className="-mx-5 mt-10 flex gap-6 overflow-x-auto px-5 pb-2 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:px-8 md:mx-0 md:px-0"
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.1 }}
+            transition={{ duration: 0.65, delay: 0.08, ease: REVEAL_EASE }}
+            className="-mx-5 mt-10 flex gap-4 overflow-x-auto px-5 pb-2 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:px-8 md:mx-0 md:px-0"
           >
             {TESTIMONIALS.map((item) => (
               <article
                 key={item.author}
-                className="group relative aspect-[626/800] w-[86vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[8px] bg-[#2a2118] sm:w-[48vw] sm:max-w-none md:w-[calc((100%-24px)/2)] lg:w-[calc((100%-48px)/3)] xl:w-[calc((100%-72px)/4)]"
+                className="group relative aspect-[626/800] w-[86vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[8px] bg-[#2a2118] sm:w-[48vw] sm:max-w-none md:w-[calc((100%-16px)/2)] lg:w-[calc((100%-32px)/3)] xl:w-[calc((100%-48px)/4)]"
               >
                 <Image
                   src={item.image}
                   alt={item.alt}
-                  fill
+                  width={626}
+                  height={800}
                   sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 86vw"
                   referrerPolicy="no-referrer"
-                  className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+                  className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.02]"
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/15 to-black/85" />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/15 to-black/85" />
                 <div className="relative z-10 flex h-full flex-col justify-between p-6 text-white sm:p-7">
-                  <p className="text-[16px] font-light leading-[1.45] text-white sm:text-[17px]">
-                    {item.quote}
-                  </p>
+                  <div>
+                    <p className="text-[16px] font-light leading-[1.45] text-white sm:text-[17px]">
+                      {item.quote}
+                    </p>
+                  </div>
                   <footer className="pt-6">
                     <p className="text-[13.5px] font-normal leading-snug text-white">
                       {item.author}
@@ -995,7 +1032,7 @@ export function LandingPage() {
                 </div>
               </article>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -1005,7 +1042,13 @@ export function LandingPage() {
         className="bg-[linear-gradient(180deg,#e6370f_0%,#f05a16_45%,#efa02e_100%)] py-20 text-white sm:py-28"
       >
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-          <div className="max-w-2xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={REVEAL_VIEWPORT}
+            transition={{ duration: 0.6, ease: REVEAL_EASE }}
+            className="max-w-2xl"
+          >
             <h2
               className="font-serif font-normal tracking-[-0.03em] text-white"
               style={{
@@ -1033,18 +1076,25 @@ export function LandingPage() {
                 Open Cadence Studio
               </Link>
             </div>
-          </div>
+          </motion.div>
 
           <div className="mt-14 space-y-8 md:grid md:grid-cols-3 md:gap-10 md:space-y-0 md:border-t md:border-white/25 md:pt-10">
-            {IMPACT_STATS.map((stat) => (
-              <div key={stat.metric} className="flex items-baseline gap-6 md:block">
+            {IMPACT_STATS.map((stat, idx) => (
+              <motion.div
+                key={stat.metric}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={REVEAL_VIEWPORT}
+                transition={{ duration: 0.55, delay: idx * 0.09, ease: REVEAL_EASE }}
+                className="flex items-baseline gap-6 md:block"
+              >
                 <p className="w-[108px] shrink-0 font-serif text-[48px] font-normal leading-none tracking-[-0.02em] text-white tabular-nums sm:text-[56px] md:w-auto">
                   {stat.metric}
                 </p>
                 <p className="text-[15px] font-light text-white/90 md:mt-3">
                   {stat.label}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -1053,7 +1103,13 @@ export function LandingPage() {
       {/* Pricing Section — Clean white editorial contrast */}
       <section id="pricing" className="bg-white py-20 text-[#14110f] sm:py-24">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-          <div className="max-w-2xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={REVEAL_VIEWPORT}
+            transition={{ duration: 0.6, ease: REVEAL_EASE }}
+            className="max-w-2xl"
+          >
             <p className="font-mono text-[12.5px] font-normal tracking-wide text-[#f94c1f]">
               Transparent Plans
             </p>
@@ -1070,12 +1126,16 @@ export function LandingPage() {
             <p className="mt-4 text-[15px] font-light text-[#59544e]">
               Every workspace includes the 4-step Chatbot Builder, Website &amp; Docs Knowledge Base, Embed Studio, and Leads Inbox.
             </p>
-          </div>
+          </motion.div>
 
           <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-            {PRICING_TIERS.map((tier) => (
-              <div
+            {PRICING_TIERS.map((tier, idx) => (
+              <motion.div
                 key={tier.name}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={REVEAL_VIEWPORT}
+                transition={{ duration: 0.6, delay: idx * 0.09, ease: REVEAL_EASE }}
                 className={`flex flex-col justify-between rounded-[12px] border p-8 ${
                   tier.featured
                     ? 'border-[#f94c1f] bg-white'
@@ -1119,7 +1179,7 @@ export function LandingPage() {
                 >
                   Get started with {tier.name}
                 </Link>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -1129,7 +1189,13 @@ export function LandingPage() {
       <footer id="newsletter" className="border-t border-[#f0eee9] bg-white text-[#14110f]">
         <div className="mx-auto max-w-7xl px-5 pb-14 pt-16 sm:px-8 lg:px-12">
           {/* Top Newsletter Row */}
-          <div className="max-w-md">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 0.6, ease: REVEAL_EASE }}
+            className="max-w-md"
+          >
             <Link
               href="/"
               className="inline-flex items-center gap-2.5 text-[#14110f] whitespace-nowrap"
@@ -1203,10 +1269,16 @@ export function LandingPage() {
                 )}
               </form>
             )}
-          </div>
+          </motion.div>
 
           {/* Structured 8-Group Directory Grid (2-column mobile pairs, 4-column desktop) */}
-          <div className="mt-16 grid grid-cols-2 gap-x-8 gap-y-14 lg:grid-cols-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.1 }}
+            transition={{ duration: 0.6, delay: 0.08, ease: REVEAL_EASE }}
+            className="mt-16 grid grid-cols-2 gap-x-8 gap-y-14 lg:grid-cols-4"
+          >
             {FOOTER_COLUMNS.map((col) => (
               <div key={col.heading}>
                 <p className="text-[17px] font-normal tracking-[-0.01em] text-[#14110f]">
@@ -1235,7 +1307,7 @@ export function LandingPage() {
                 </ul>
               </div>
             ))}
-          </div>
+          </motion.div>
 
           {/* Bottom Social, Language & Copyright */}
           <div className="mt-16 pt-4">
@@ -1267,5 +1339,6 @@ export function LandingPage() {
 
       <CookieConsentBanner />
     </div>
+    </MotionConfig>
   );
 }

@@ -434,7 +434,7 @@ export function SettingsView() {
                   {activeWorkspace?.planName || 'Starter'} ({activeWorkspace?.subscriptionStatus || 'active'})
                 </h2>
                 <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  Billing cycle: {activeWorkspace?.billingCycle || 'monthly'}. Manage or switch plans anytime from the pricing page.
+                  Billing cycle: {user?.billingCycle || 'monthly'}. Manage or switch plans anytime from the pricing page.
                 </p>
               </div>
               <Link

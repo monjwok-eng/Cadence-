@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { DM_Sans, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google';
+import { DM_Sans, JetBrains_Mono, Plus_Jakarta_Sans, Spectral } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/components/providers/app-provider';
 import { AppShell } from '@/components/layout/app-shell';
@@ -23,6 +23,13 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['400', '500'],
   variable: '--font-mono-face',
+  display: 'swap',
+});
+
+const spectral = Spectral({
+  subsets: ['latin'],
+  weight: ['300', '400'],
+  variable: '--font-hero-serif',
   display: 'swap',
 });
 
@@ -52,7 +59,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${plusJakartaSans.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
+      className={`${plusJakartaSans.variable} ${dmSans.variable} ${jetbrainsMono.variable} ${spectral.variable}`}
       suppressHydrationWarning
     >
       <body
