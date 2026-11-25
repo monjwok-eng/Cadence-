@@ -8,6 +8,8 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Compass,
   Minus,
   Plus,
@@ -16,6 +18,12 @@ import {
 import heroImg from '@/src/assets/images/hero_parloa_landscape_1795166054480.jpg';
 import testimonialCyclistImg from '@/src/assets/images/testimonial_golden_cyclist_1795171532393.jpg';
 import testimonialHorizonImg from '@/src/assets/images/testimonial_golden_horizon_1795171532435.jpg';
+import testimonialEnergyImg from '@/src/assets/images/testimonial_energy_turbine_1795600845415.jpg';
+import testimonialHomeImg from '@/src/assets/images/testimonial_insurance_home_1795600845394.jpg';
+import testimonialDuskImg from '@/src/assets/images/testimonial_insurance_dusk_1795600847557.jpg';
+import testimonialAutoImg from '@/src/assets/images/testimonial_retail_auto_1795600847488.jpg';
+import testimonialBankingImg from '@/src/assets/images/testimonial_banking_portrait_1795600847751.jpg';
+import testimonialBalconyImg from '@/src/assets/images/testimonial_balcony_sunset_1795600847506.jpg';
 import { useApp } from '@/components/providers/app-provider';
 import { BrandLoader } from '@/components/ui/brand-loader';
 import { CookieConsentBanner } from '@/components/ui/cookie-consent-banner';
@@ -29,19 +37,67 @@ const BUILDER_PROMPTS = [
 const TESTIMONIALS = [
   {
     quote:
-      '“Visitors get spoken answers sourced directly from our docs in seconds—and qualified leads land straight in our team inbox.”',
+      '“This collaboration allowed us to push the boundaries of what’s possible with conversational AI.”',
     author: 'Daniel Aslet, Director of Applied AI Strategy, Transformation, and Training',
     company: 'Waterfield Tech',
     image: testimonialCyclistImg,
-    alt: 'Warm golden-hour editorial portrait along a sunlit avenue',
+    alt: 'Woman outdoors in the sunlight',
   },
   {
     quote:
-      '“We pasted our website URL, uploaded our onboarding guides, and embedded our voice chatbot across every landing page in one afternoon.”',
-    author: 'Elena Rostova, VP of Customer Operations',
-    company: 'Spotnana',
+      '“With Cadence, we’re creating new opportunities for projects. It’s a real win for our team and the city.”',
+    author: 'Thorsten Gerbitz, Department Head',
+    company: 'MEG',
+    image: testimonialEnergyImg,
+    alt: 'Wind turbine in a golden-hour landscape',
+  },
+  {
+    quote:
+      '“At Münchener Verein, insurance has always been personal. Now AI helps us serve customers even more efficiently.”',
+    author: 'Rainer Breitmoser, Chief Customer Officer',
+    company: 'Münchener Verein Insurance Group',
+    image: testimonialHomeImg,
+    alt: 'House in a sunlit rural landscape',
+  },
+  {
+    quote:
+      '“Our customers expect us to be available to them at any time of the day or night to competently record their claims. With Cadence, we can meet those standards.”',
+    author: 'Uwe Schumacher, Chairman of the Board',
+    company: 'DOMCURA AG',
+    image: testimonialDuskImg,
+    alt: 'Warm glowing architectural windows at dusk',
+  },
+  {
+    quote:
+      '“Thanks to Cadence’s AI agents, we’re available to customers at all times.”',
+    author: 'Alexander App, Director of Customer Service Europe',
+    company: 'AUTO1 Group',
+    image: testimonialAutoImg,
+    alt: 'Sunlit modern automotive showroom facade',
+  },
+  {
+    quote:
+      '“With the Cadence platform’s low-code front-end, it is no longer necessary to involve Swiss Life’s IT department.”',
+    author: 'Tom Schneider, Process and Project Management Officer',
+    company: 'Swiss Life Germany',
+    image: testimonialBankingImg,
+    alt: 'Executive in a suit standing by tall sunlit windows',
+  },
+  {
+    quote:
+      '“From the very first day, the AI agent not only achieved the goals we had set, but exceeded them.”',
+    author: 'Johanna Drachenberg, Reader Market & Marketing Lead',
+    company: 'WESER-KURIER Mediengruppe',
     image: testimonialHorizonImg,
-    alt: 'Warm golden-hour coastal sunset over calm water',
+    alt: 'Horizon skyline at golden sunset',
+  },
+  {
+    quote:
+      '“By deploying Cadence, we are sending a clear signal: We want to rethink service. We are proud to be among the pioneers in the industry.”',
+    author: 'Patrik Pietryga, Head of After-Sales',
+    company: 'Nord-Ostsee Automobile',
+    image: testimonialBalconyImg,
+    alt: 'Person seated on a stone terrace at sunset',
   },
 ];
 
@@ -205,12 +261,43 @@ export function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [navVisible, setNavVisible] = useState(true);
   const lastScrollYRef = useRef(0);
+  const trustTrackRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(true);
   const [promptIndex, setPromptIndex] = useState(0);
 
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterConsent, setNewsletterConsent] = useState(false);
   const [newsletterError, setNewsletterError] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+
+  const syncTrustSliderButtons = () => {
+    const el = trustTrackRef.current;
+    if (!el) return;
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    setCanScrollPrev(el.scrollLeft > 4);
+    setCanScrollNext(el.scrollLeft < maxScroll - 4);
+  };
+
+  useEffect(() => {
+    syncTrustSliderButtons();
+    const handleResize = () => syncTrustSliderButtons();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleScrollTrustSlider = (direction: 'prev' | 'next') => {
+    const el = trustTrackRef.current;
+    if (!el) return;
+    const firstCard = el.querySelector('article');
+    const stepWidth = firstCard
+      ? firstCard.getBoundingClientRect().width + 24
+      : Math.max(320, el.clientWidth * 0.75);
+    el.scrollBy({
+      left: direction === 'next' ? stepWidth : -stepWidth,
+      behavior: 'smooth',
+    });
+  };
 
   useEffect(() => {
     if (authReady && firebaseUser) {
@@ -820,65 +907,93 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Trusted by Leading Brands — Matches The Difference font scale, container width, and full-bleed mobile peek */}
+      {/* Trusted by Leading Brands — Editorial horizontal card slider with Gartner/G2 ratings & controls */}
       <section id="trusted" className="bg-white pb-20 pt-2 sm:pb-28 overflow-x-clip">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-          <div className="max-w-3xl">
-            <h2
-              className="font-serif font-normal tracking-[-0.03em] text-[#14110f]"
-              style={{
-                fontSize: 'clamp(2.6rem, 4.8vw, 4rem)',
-                lineHeight: 1.03,
-                textWrap: 'balance',
-              }}
-            >
-              Trusted by leading brands.
-            </h2>
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-3xl">
+              <h2
+                className="font-serif font-normal tracking-[-0.03em] text-[#14110f]"
+                style={{
+                  fontSize: 'clamp(2.6rem, 4.8vw, 4rem)',
+                  lineHeight: 1.03,
+                  textWrap: 'balance',
+                }}
+              >
+                Trusted by leading brands.
+              </h2>
 
-            <div className="mt-6 flex flex-wrap items-center gap-y-2 text-[14.5px] text-[#14110f] tabular-nums">
-              <div className="flex items-center gap-2.5">
-                <span className="font-light text-[#2b2623]">Website Voice Studio</span>
-                <span className="font-normal text-[#14110f]">4-Step</span>
+              <div className="mt-6 flex flex-wrap items-center gap-y-2 text-[14.5px] text-[#14110f] tabular-nums">
+                <p className="flex items-center gap-2.5">
+                  <span className="font-light text-[#2b2623]">Gartner Peer Insights</span>
+                  <span className="font-normal text-[#14110f]">4.5/5</span>
+                </p>
+                <span
+                  className="mx-5 h-4 w-px bg-[#dcd7ce]"
+                  aria-hidden="true"
+                />
+                <p className="flex items-center gap-2.5">
+                  <span className="font-light text-[#2b2623]">G2</span>
+                  <span className="font-normal text-[#14110f]">4.5/5</span>
+                </p>
               </div>
-              <span
-                className="mx-5 h-4 w-px bg-[#dcd7ce]"
-                aria-hidden="true"
-              />
-              <div className="flex items-center gap-2.5">
-                <span className="font-light text-[#2b2623]">Embed Snippet</span>
-                <span className="font-normal text-[#14110f]">1-Line Install</span>
-              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleScrollTrustSlider('prev')}
+                disabled={!canScrollPrev}
+                aria-label="Previous"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e2ded7] bg-white text-[#14110f] transition-colors hover:border-[#14110f] disabled:pointer-events-none disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14110f]"
+              >
+                <ChevronLeft className="h-4 w-4 stroke-[1.5]" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollTrustSlider('next')}
+                disabled={!canScrollNext}
+                aria-label="Next"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e2ded7] bg-white text-[#14110f] transition-colors hover:border-[#14110f] disabled:pointer-events-none disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14110f]"
+              >
+                <ChevronRight className="h-4 w-4 stroke-[1.5]" />
+              </button>
             </div>
           </div>
 
-          <div className="-mx-5 mt-10 flex gap-4 overflow-x-auto px-5 pb-2 snap-x snap-mandatory sm:-mx-8 sm:px-8 md:mx-0 md:grid md:grid-cols-2 md:gap-8 md:overflow-visible md:px-0 md:pb-0">
+          <div
+            ref={trustTrackRef}
+            onScroll={syncTrustSliderButtons}
+            className="-mx-5 mt-10 flex gap-6 overflow-x-auto px-5 pb-2 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:px-8 md:mx-0 md:px-0"
+          >
             {TESTIMONIALS.map((item) => (
-              <div
+              <article
                 key={item.author}
-                className="relative aspect-[4/4.8] w-[85vw] max-w-[420px] shrink-0 snap-start overflow-hidden rounded-[8px] bg-[#2a2118] sm:w-[440px] md:aspect-[4/4.4] md:w-auto md:max-w-none"
+                className="group relative aspect-[626/800] w-[86vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[8px] bg-[#2a2118] sm:w-[48vw] sm:max-w-none md:w-[calc((100%-24px)/2)] lg:w-[calc((100%-48px)/3)] xl:w-[calc((100%-72px)/4)]"
               >
                 <Image
                   src={item.image}
                   alt={item.alt}
                   fill
+                  sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 86vw"
                   referrerPolicy="no-referrer"
-                  className="object-cover object-center"
+                  className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.02]"
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/10 to-black/80" />
-                <div className="relative z-10 flex h-full flex-col justify-between p-7 text-white sm:p-9">
-                  <p className="max-w-lg text-[16.5px] font-light leading-[1.48] text-white sm:text-[19.5px]">
+                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/15 to-black/85" />
+                <div className="relative z-10 flex h-full flex-col justify-between p-6 text-white sm:p-7">
+                  <p className="text-[16px] font-light leading-[1.45] text-white sm:text-[17px]">
                     {item.quote}
                   </p>
-                  <div className="pt-6">
-                    <p className="text-[14px] font-normal leading-snug text-white">
+                  <footer className="pt-6">
+                    <p className="text-[13.5px] font-normal leading-snug text-white">
                       {item.author}
                     </p>
-                    <p className="mt-1 text-[13.5px] font-light text-white/70">
+                    <p className="mt-1 text-[13px] font-light text-white/75">
                       {item.company}
                     </p>
-                  </div>
+                  </footer>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         </div>
